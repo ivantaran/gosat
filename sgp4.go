@@ -6,6 +6,8 @@ import "math"
 const (
 	TwoPi   = math.Pi * 2.0
 	Deg2Rad = math.Pi / 180.0
+	X2O3    = 2.0 / 3.0
+	Temp4   = 1.5e-12
 )
 
 type elsetrec struct {
@@ -221,13 +223,8 @@ type tle struct {
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
 
-func (s *elsetrec) initl(epoch float64) (ainv float64, sinio float64, con41 float64, posq float64, rp float64) {
-	// float64 xke, float64 j2, float64 ecco, float64 epoch, float64 inclo, float64 no_kozai, char opsmode,
-	// char &method, float64 &ainv, float64 &ao, float64 &con41, float64 &con42, float64 &cosio,
-	// float64 &cosio2, float64 &eccsq, float64 &omeosq, float64 &posq, float64 &rp, float64 &rteosq,
-	// float64 &sinio, float64 &gsto, float64 &no_unkozai
-
-	x2o3 := 2.0 / 3.0
+func (s *elsetrec) initl(epoch float64) (
+	ainv float64, sinio float64, posq float64, rp float64) {
 
 	/* ------------- calculate auxillary epoch quantities ---------- */
 	eccsq := s.ecco * s.ecco
@@ -237,18 +234,18 @@ func (s *elsetrec) initl(epoch float64) (ainv float64, sinio float64, con41 floa
 	cosio2 := cosio * cosio
 
 	/* ------------------ un-kozai the mean motion ----------------- */
-	ak := math.Pow(s.xke/s.no_kozai, x2o3)
+	ak := math.Pow(s.xke/s.no_kozai, X2O3)
 	d1 := 0.75 * s.j2 * (3.0*cosio2 - 1.0) / (rteosq * omeosq)
 	del := d1 / (ak * ak)
 	adel := ak * (1.0 - del*del - del*(1.0/3.0+134.0*del*del/81.0))
 	del = d1 / (adel * adel)
 	s.no_unkozai = s.no_kozai / (1.0 + del)
 
-	ao := math.Pow(s.xke/s.no_unkozai, x2o3)
+	ao := math.Pow(s.xke/s.no_unkozai, X2O3)
 	sinio = math.Sin(s.inclo)
 	po := ao * omeosq
 	con42 := 1.0 - 5.0*cosio2
-	con41 = -con42 - cosio2 - cosio2
+	s.con41 = -con42 - cosio2 - cosio2
 	ainv = 1.0 / ao
 	posq = po * po
 	rp = ao * (1.0 - s.ecco)
@@ -274,8 +271,10 @@ func (s *elsetrec) initl(epoch float64) (ainv float64, sinio float64, con41 floa
 func gstime(jdut1 float64) float64 {
 
 	tut1 := (jdut1 - 2451545.0) / 36525.0
-	temp := -6.2e-6*tut1*tut1*tut1 + 0.093104*tut1*tut1 + (876600.0*3600+8640184.812866)*tut1 + 67310.54841 // seconds
-	temp = math.Mod(temp*Deg2Rad/240.0, TwoPi)                                                              //360/86400 = 1/240, to deg, to rad
+	temp := -6.2e-6*tut1*tut1*tut1 +
+		0.093104*tut1*tut1 +
+		(876600.0*3600+8640184.812866)*tut1 + 67310.54841 // seconds
+	temp = math.Mod(temp*Deg2Rad/240.0, TwoPi) //360/86400 = 1/240, to deg, to rad
 
 	// ------------------------ check quadrants ---------------------
 	if temp < 0.0 {
@@ -283,4 +282,191 @@ func gstime(jdut1 float64) float64 {
 	}
 
 	return temp
+}
+
+/* -----------------------------------------------------------------------------
+*
+*                           function getgravconst
+*
+*  this function gets constants for the propagator. note that mu is identified to
+*    facilitiate comparisons with newer models. the common useage is wgs72.
+*
+*  author        : david vallado                  719-573-2600   21 jul 2006
+*
+*  inputs        :
+*    whichconst  - which set of constants to use  wgs72old, wgs72, wgs84
+*
+*  outputs       :
+*    tumin       - minutes in one time unit
+*    mu          - earth gravitational parameter
+*    radiusearthkm - radius of the earth in km
+*    xke         - reciprocal of tumin
+*    j2, j3, j4  - un-normalized zonal harmonic values
+*    j3oj2       - j3 divided by j2
+*
+*  locals        :
+*
+*  coupling      :
+*    none
+*
+*  references    :
+*    norad spacetrack report #3
+*    vallado, crawford, hujsak, kelso  2006
+--------------------------------------------------------------------------- */
+
+func (s *elsetrec) getgravconst(whichconst string) {
+	switch whichconst {
+	// -- wgs-72 low precision str#3 constants --
+	case "wgs72old":
+		s.mu = 398600.79964        // in km3 / s2
+		s.radiusearthkm = 6378.135 // km
+		s.xke = 0.0743669161       // reciprocal of tumin
+		s.tumin = 1.0 / s.xke
+		s.j2 = 0.001082616
+		s.j3 = -0.00000253881
+		s.j4 = -0.00000165597
+		s.j3oj2 = s.j3 / s.j2
+	// ------------ wgs-72 constants ------------
+	case "wgs72":
+		s.mu = 398600.8            // in km3 / s2
+		s.radiusearthkm = 6378.135 // km
+		s.xke = 60.0 / math.Sqrt(s.radiusearthkm*s.radiusearthkm*s.radiusearthkm/s.mu)
+		s.tumin = 1.0 / s.xke
+		s.j2 = 0.001082616
+		s.j3 = -0.00000253881
+		s.j4 = -0.00000165597
+		s.j3oj2 = s.j3 / s.j2
+	case "wgs84":
+	default:
+		// ------------ wgs-84 constants ------------
+		s.mu = 398600.5            // in km3 / s2
+		s.radiusearthkm = 6378.137 // km
+		s.xke = 60.0 / math.Sqrt(s.radiusearthkm*s.radiusearthkm*s.radiusearthkm/s.mu)
+		s.tumin = 1.0 / s.xke
+		s.j2 = 0.00108262998905
+		s.j3 = -0.00000253215306
+		s.j4 = -0.00000161098761
+		s.j3oj2 = s.j3 / s.j2
+	}
+}
+
+func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int) {
+	/* ----------- set all near earth variables to zero ------------ */
+	s.isimp = 0
+	s.method = 'n'
+	s.aycof = 0.0
+	s.con41 = 0.0
+	s.cc1 = 0.0
+	s.cc4 = 0.0
+	s.cc5 = 0.0
+	s.d2 = 0.0
+	s.d3 = 0.0
+	s.d4 = 0.0
+	s.delmo = 0.0
+	s.eta = 0.0
+	s.argpdot = 0.0
+	s.omgcof = 0.0
+	s.sinmao = 0.0
+	s.t = 0.0
+	s.t2cof = 0.0
+	s.t3cof = 0.0
+	s.t4cof = 0.0
+	s.t5cof = 0.0
+	s.x1mth2 = 0.0
+	s.x7thm1 = 0.0
+	s.mdot = 0.0
+	s.nodedot = 0.0
+	s.xlcof = 0.0
+	s.xmcof = 0.0
+	s.nodecf = 0.0
+
+	/* ----------- set all deep space variables to zero ------------ */
+	s.irez = 0
+	s.d2201 = 0.0
+	s.d2211 = 0.0
+	s.d3210 = 0.0
+	s.d3222 = 0.0
+	s.d4410 = 0.0
+	s.d4422 = 0.0
+	s.d5220 = 0.0
+	s.d5232 = 0.0
+	s.d5421 = 0.0
+	s.d5433 = 0.0
+	s.dedt = 0.0
+	s.del1 = 0.0
+	s.del2 = 0.0
+	s.del3 = 0.0
+	s.didt = 0.0
+	s.dmdt = 0.0
+	s.dnodt = 0.0
+	s.domdt = 0.0
+	s.e3 = 0.0
+	s.ee2 = 0.0
+	s.peo = 0.0
+	s.pgho = 0.0
+	s.pho = 0.0
+	s.pinco = 0.0
+	s.plo = 0.0
+	s.se2 = 0.0
+	s.se3 = 0.0
+	s.sgh2 = 0.0
+	s.sgh3 = 0.0
+	s.sgh4 = 0.0
+	s.sh2 = 0.0
+	s.sh3 = 0.0
+	s.si2 = 0.0
+	s.si3 = 0.0
+	s.sl2 = 0.0
+	s.sl3 = 0.0
+	s.sl4 = 0.0
+	s.gsto = 0.0
+	s.xfact = 0.0
+	s.xgh2 = 0.0
+	s.xgh3 = 0.0
+	s.xgh4 = 0.0
+	s.xh2 = 0.0
+	s.xh3 = 0.0
+	s.xi2 = 0.0
+	s.xi3 = 0.0
+	s.xl2 = 0.0
+	s.xl3 = 0.0
+	s.xl4 = 0.0
+	s.xlamo = 0.0
+	s.zmol = 0.0
+	s.zmos = 0.0
+	s.atime = 0.0
+	s.xli = 0.0
+	s.xni = 0.0
+
+	/* ------------------------ earth constants ----------------------- */
+	s.getgravconst(whichconst)
+
+	s.error = 0
+	s.operationmode = opsmode
+	s.satnum = satn
+
+	s.bstar = t.xbstar
+	s.ndot = t.xndot
+	s.nddot = t.xnddot
+	s.ecco = t.xecco
+	s.argpo = t.xargpo
+	s.inclo = t.xinclo
+	s.mo = t.xmo
+	s.no_kozai = t.xno
+	s.nodeo = t.xnodeo
+
+	s.am = 0.0
+	s.em = 0.0
+	s.im = 0.0
+	s.Om = 0.0
+	s.mm = 0.0
+	s.nm = 0.0
+
+	ss := 78.0/s.radiusearthkm + 1.0
+	qzms2ttemp := (120.0 - 78.0) / s.radiusearthkm
+	qzms2t := qzms2ttemp * qzms2ttemp * qzms2ttemp * qzms2ttemp
+
+	s.init = 'y'
+	s.t = 0.0
+
 }
