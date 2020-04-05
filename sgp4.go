@@ -156,16 +156,69 @@ type elsetrec struct {
 	rcs_m2      float64 //"RCS (m^2)" storage
 }
 
+type sgp4ds struct {
+	cnodm  float64
+	cosim  float64
+	cosomm float64
+	day    float64
+	em     float64
+	emsq   float64
+	gam    float64
+	nm     float64
+	rtemsq float64
+	s1     float64
+	s2     float64
+	s3     float64
+	s4     float64
+	s5     float64
+	s6     float64
+	s7     float64
+	sinim  float64
+	sinomm float64
+	snodm  float64
+	ss1    float64
+	ss2    float64
+	ss3    float64
+	ss4    float64
+	ss5    float64
+	ss6    float64
+	ss7    float64
+	sz1    float64
+	sz11   float64
+	sz12   float64
+	sz13   float64
+	sz2    float64
+	sz21   float64
+	sz22   float64
+	sz23   float64
+	sz3    float64
+	sz31   float64
+	sz32   float64
+	sz33   float64
+	z1     float64
+	z11    float64
+	z12    float64
+	z13    float64
+	z2     float64
+	z21    float64
+	z22    float64
+	z23    float64
+	z3     float64
+	z31    float64
+	z32    float64
+	z33    float64
+}
+
 type tle struct {
-	satn   int
 	epoch  float64
-	xbstar float64
-	xndot  float64
-	xnddot float64
-	xecco  float64
+	satn   int
 	xargpo float64
+	xbstar float64
+	xecco  float64
 	xinclo float64
 	xmo    float64
+	xnddot float64
+	xndot  float64
 	xno    float64
 	xnodeo float64
 }
@@ -592,20 +645,7 @@ func (s *elsetrec) getgravconst(whichconst string) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(
-	epoch float64, tc float64,
-) (
-	snodm float64, cnodm float64, sinim float64, cosim float64, sinomm float64, cosomm float64, day float64,
-	em float64, emsq float64, gam float64, rtemsq float64,
-	s1 float64, s2 float64, s3 float64, s4 float64, s5 float64, s6 float64, s7 float64,
-	ss1 float64, ss2 float64, ss3 float64, ss4 float64, ss5 float64, ss6 float64, ss7 float64,
-	sz1 float64, sz2 float64, sz3 float64, sz11 float64, sz12 float64, sz13 float64,
-	sz21 float64, sz22 float64, sz23 float64, sz31 float64, sz32 float64, sz33 float64,
-	nm float64,
-	z1 float64, z2 float64, z3 float64, z11 float64, z12 float64, z13 float64,
-	z21 float64, z22 float64, z23 float64, z31 float64, z32 float64, z33 float64,
-) {
-
+func (s *elsetrec) dscom(epoch float64, tc float64) (ds *sgp4ds) {
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -617,17 +657,17 @@ func (s *elsetrec) dscom(
 		zsings = -0.98088458
 	)
 
-	nm = s.no_unkozai
-	em = s.ecco
-	snodm = math.Sin(s.nodeo)
-	cnodm = math.Cos(s.nodeo)
-	sinomm = math.Sin(s.argpo)
-	cosomm = math.Cos(s.argpo)
-	sinim = math.Sin(s.inclo)
-	cosim = math.Cos(s.inclo)
-	emsq = em * em
-	betasq := 1.0 - emsq
-	rtemsq = math.Sqrt(betasq)
+	ds.nm = s.no_unkozai
+	ds.em = s.ecco
+	ds.snodm = math.Sin(s.nodeo)
+	ds.cnodm = math.Cos(s.nodeo)
+	ds.sinomm = math.Sin(s.argpo)
+	ds.cosomm = math.Cos(s.argpo)
+	ds.sinim = math.Sin(s.inclo)
+	ds.cosim = math.Cos(s.inclo)
+	ds.emsq = ds.em * ds.em
+	betasq := 1.0 - ds.emsq
+	ds.rtemsq = math.Sqrt(betasq)
 
 	/* ----------------- initialize lunar solar terms --------------- */
 	s.peo = 0.0
@@ -635,19 +675,19 @@ func (s *elsetrec) dscom(
 	s.plo = 0.0
 	s.pgho = 0.0
 	s.pho = 0.0
-	day = epoch + 18261.5 + tc/1440.0
-	xnodce := math.Mod(4.5236020-9.2422029e-4*day, TwoPi)
+	ds.day = epoch + 18261.5 + tc/1440.0
+	xnodce := math.Mod(4.5236020-9.2422029e-4*ds.day, TwoPi)
 	stem := math.Sin(xnodce)
 	ctem := math.Cos(xnodce)
 	zcosil := 0.91375164 - 0.03568096*ctem
 	zsinil := math.Sqrt(1.0 - zcosil*zcosil)
 	zsinhl := 0.089683511 * stem / zsinil
 	zcoshl := math.Sqrt(1.0 - zsinhl*zsinhl)
-	gam = 5.8351514 + 0.0019443680*day
+	ds.gam = 5.8351514 + 0.0019443680*ds.day
 	zx := 0.39785416 * stem / zsinil
 	zy := zcoshl*ctem + 0.91744867*zsinhl*stem
 	zx = math.Atan2(zx, zy)
-	zx = gam + zx - xnodce
+	zx = ds.gam + zx - xnodce
 	zcosgl := math.Cos(zx)
 	zsingl := math.Sin(zx)
 
@@ -656,10 +696,10 @@ func (s *elsetrec) dscom(
 	zsing := zsings
 	zcosi := zcosis
 	zsini := zsinis
-	zcosh := cnodm
-	zsinh := snodm
+	zcosh := ds.cnodm
+	zsinh := ds.snodm
 	cc := c1ss
-	xnoi := 1.0 / nm
+	xnoi := 1.0 / ds.nm
 
 	for lsflg := 1; lsflg <= 2; lsflg++ {
 		a1 := zcosg*zcosh + zsing*zcosi*zsinh
@@ -668,104 +708,104 @@ func (s *elsetrec) dscom(
 		a8 := zsing * zsini
 		a9 := zsing*zsinh + zcosg*zcosi*zcosh
 		a10 := zcosg * zsini
-		a2 := cosim*a7 + sinim*a8
-		a4 := cosim*a9 + sinim*a10
-		a5 := -sinim*a7 + cosim*a8
-		a6 := -sinim*a9 + cosim*a10
+		a2 := ds.cosim*a7 + ds.sinim*a8
+		a4 := ds.cosim*a9 + ds.sinim*a10
+		a5 := -ds.sinim*a7 + ds.cosim*a8
+		a6 := -ds.sinim*a9 + ds.cosim*a10
 
-		x1 := a1*cosomm + a2*sinomm
-		x2 := a3*cosomm + a4*sinomm
-		x3 := -a1*sinomm + a2*cosomm
-		x4 := -a3*sinomm + a4*cosomm
-		x5 := a5 * sinomm
-		x6 := a6 * sinomm
-		x7 := a5 * cosomm
-		x8 := a6 * cosomm
+		x1 := a1*ds.cosomm + a2*ds.sinomm
+		x2 := a3*ds.cosomm + a4*ds.sinomm
+		x3 := -a1*ds.sinomm + a2*ds.cosomm
+		x4 := -a3*ds.sinomm + a4*ds.cosomm
+		x5 := a5 * ds.sinomm
+		x6 := a6 * ds.sinomm
+		x7 := a5 * ds.cosomm
+		x8 := a6 * ds.cosomm
 
-		z31 = 12.0*x1*x1 - 3.0*x3*x3
-		z32 = 24.0*x1*x2 - 6.0*x3*x4
-		z33 = 12.0*x2*x2 - 3.0*x4*x4
-		z1 = 3.0*(a1*a1+a2*a2) + z31*emsq
-		z2 = 6.0*(a1*a3+a2*a4) + z32*emsq
-		z3 = 3.0*(a3*a3+a4*a4) + z33*emsq
-		z11 = -6.0*a1*a5 + emsq*(-24.0*x1*x7-6.0*x3*x5)
-		z12 = -6.0*(a1*a6+a3*a5) + emsq*(-24.0*(x2*x7+x1*x8)-6.0*(x3*x6+x4*x5))
-		z13 = -6.0*a3*a6 + emsq*(-24.0*x2*x8-6.0*x4*x6)
-		z21 = 6.0*a2*a5 + emsq*(24.0*x1*x5-6.0*x3*x7)
-		z22 = 6.0*(a4*a5+a2*a6) + emsq*(24.0*(x2*x5+x1*x6)-6.0*(x4*x7+x3*x8))
-		z23 = 6.0*a4*a6 + emsq*(24.0*x2*x6-6.0*x4*x8)
-		z1 = z1 + z1 + betasq*z31
-		z2 = z2 + z2 + betasq*z32
-		z3 = z3 + z3 + betasq*z33
-		s3 = cc * xnoi
-		s2 = -0.5 * s3 / rtemsq
-		s4 = s3 * rtemsq
-		s1 = -15.0 * em * s4
-		s5 = x1*x3 + x2*x4
-		s6 = x2*x3 + x1*x4
-		s7 = x2*x4 - x1*x3
+		ds.z31 = 12.0*x1*x1 - 3.0*x3*x3
+		ds.z32 = 24.0*x1*x2 - 6.0*x3*x4
+		ds.z33 = 12.0*x2*x2 - 3.0*x4*x4
+		ds.z1 = 3.0*(a1*a1+a2*a2) + ds.z31*ds.emsq
+		ds.z2 = 6.0*(a1*a3+a2*a4) + ds.z32*ds.emsq
+		ds.z3 = 3.0*(a3*a3+a4*a4) + ds.z33*ds.emsq
+		ds.z11 = -6.0*a1*a5 + ds.emsq*(-24.0*x1*x7-6.0*x3*x5)
+		ds.z12 = -6.0*(a1*a6+a3*a5) + ds.emsq*(-24.0*(x2*x7+x1*x8)-6.0*(x3*x6+x4*x5))
+		ds.z13 = -6.0*a3*a6 + ds.emsq*(-24.0*x2*x8-6.0*x4*x6)
+		ds.z21 = 6.0*a2*a5 + ds.emsq*(24.0*x1*x5-6.0*x3*x7)
+		ds.z22 = 6.0*(a4*a5+a2*a6) + ds.emsq*(24.0*(x2*x5+x1*x6)-6.0*(x4*x7+x3*x8))
+		ds.z23 = 6.0*a4*a6 + ds.emsq*(24.0*x2*x6-6.0*x4*x8)
+		ds.z1 = ds.z1 + ds.z1 + betasq*ds.z31
+		ds.z2 = ds.z2 + ds.z2 + betasq*ds.z32
+		ds.z3 = ds.z3 + ds.z3 + betasq*ds.z33
+		ds.s3 = cc * xnoi
+		ds.s2 = -0.5 * ds.s3 / ds.rtemsq
+		ds.s4 = ds.s3 * ds.rtemsq
+		ds.s1 = -15.0 * ds.em * ds.s4
+		ds.s5 = x1*x3 + x2*x4
+		ds.s6 = x2*x3 + x1*x4
+		ds.s7 = x2*x4 - x1*x3
 
 		/* ----------------------- do lunar terms ------------------- */
 		if lsflg == 1 {
-			ss1 = s1
-			ss2 = s2
-			ss3 = s3
-			ss4 = s4
-			ss5 = s5
-			ss6 = s6
-			ss7 = s7
-			sz1 = z1
-			sz2 = z2
-			sz3 = z3
-			sz11 = z11
-			sz12 = z12
-			sz13 = z13
-			sz21 = z21
-			sz22 = z22
-			sz23 = z23
-			sz31 = z31
-			sz32 = z32
-			sz33 = z33
+			ds.ss1 = ds.s1
+			ds.ss2 = ds.s2
+			ds.ss3 = ds.s3
+			ds.ss4 = ds.s4
+			ds.ss5 = ds.s5
+			ds.ss6 = ds.s6
+			ds.ss7 = ds.s7
+			ds.sz1 = ds.z1
+			ds.sz2 = ds.z2
+			ds.sz3 = ds.z3
+			ds.sz11 = ds.z11
+			ds.sz12 = ds.z12
+			ds.sz13 = ds.z13
+			ds.sz21 = ds.z21
+			ds.sz22 = ds.z22
+			ds.sz23 = ds.z23
+			ds.sz31 = ds.z31
+			ds.sz32 = ds.z32
+			ds.sz33 = ds.z33
 			zcosg = zcosgl
 			zsing = zsingl
 			zcosi = zcosil
 			zsini = zsinil
-			zcosh = zcoshl*cnodm + zsinhl*snodm
-			zsinh = snodm*zcoshl - cnodm*zsinhl
+			zcosh = zcoshl*ds.cnodm + zsinhl*ds.snodm
+			zsinh = ds.snodm*zcoshl - ds.cnodm*zsinhl
 			cc = c1l
 		}
 	}
 
-	zmol := math.Mod(4.7199672+0.22997150*day-gam, TwoPi)
-	zmos := math.Mod(6.2565837+0.017201977*day, TwoPi)
+	zmol := math.Mod(4.7199672+0.22997150*ds.day-ds.gam, TwoPi)
+	zmos := math.Mod(6.2565837+0.017201977*ds.day, TwoPi)
 
 	/* ------------------------ do solar terms ---------------------- */
-	se2 := 2.0 * ss1 * ss6
-	se3 := 2.0 * ss1 * ss7
-	si2 := 2.0 * ss2 * sz12
-	si3 := 2.0 * ss2 * (sz13 - sz11)
-	s.sl2 = -2.0 * ss3 * sz2
-	s.sl3 = -2.0 * ss3 * (sz3 - sz1)
-	s.sl4 = -2.0 * ss3 * (-21.0 - 9.0*emsq) * zes
-	s.sgh2 = 2.0 * ss4 * sz32
-	s.sgh3 = 2.0 * ss4 * (sz33 - sz31)
-	s.sgh4 = -18.0 * ss4 * zes
-	s.sh2 = -2.0 * ss2 * sz22
-	s.sh3 = -2.0 * ss2 * (sz23 - sz21)
+	se2 := 2.0 * ds.ss1 * ds.ss6
+	se3 := 2.0 * ds.ss1 * ds.ss7
+	si2 := 2.0 * ds.ss2 * ds.sz12
+	si3 := 2.0 * ds.ss2 * (ds.sz13 - ds.sz11)
+	s.sl2 = -2.0 * ds.ss3 * ds.sz2
+	s.sl3 = -2.0 * ds.ss3 * (ds.sz3 - ds.sz1)
+	s.sl4 = -2.0 * ds.ss3 * (-21.0 - 9.0*ds.emsq) * zes
+	s.sgh2 = 2.0 * ds.ss4 * ds.sz32
+	s.sgh3 = 2.0 * ds.ss4 * (ds.sz33 - ds.sz31)
+	s.sgh4 = -18.0 * ds.ss4 * zes
+	s.sh2 = -2.0 * ds.ss2 * ds.sz22
+	s.sh3 = -2.0 * ds.ss2 * (ds.sz23 - ds.sz21)
 
 	/* ------------------------ do lunar terms ---------------------- */
-	s.ee2 = 2.0 * s1 * s6
-	s.e3 = 2.0 * s1 * s7
-	s.xi2 = 2.0 * s2 * z12
-	s.xi3 = 2.0 * s2 * (z13 - z11)
-	s.xl2 = -2.0 * s3 * z2
-	s.xl3 = -2.0 * s3 * (z3 - z1)
-	s.xl4 = -2.0 * s3 * (-21.0 - 9.0*emsq) * zel
-	s.xgh2 = 2.0 * s4 * z32
-	s.xgh3 = 2.0 * s4 * (z33 - z31)
-	s.xgh4 = -18.0 * s4 * zel
-	s.xh2 = -2.0 * s2 * z22
-	s.xh3 = -2.0 * s2 * (z23 - z21)
+	s.ee2 = 2.0 * ds.s1 * ds.s6
+	s.e3 = 2.0 * ds.s1 * ds.s7
+	s.xi2 = 2.0 * ds.s2 * ds.z12
+	s.xi3 = 2.0 * ds.s2 * (ds.z13 - ds.z11)
+	s.xl2 = -2.0 * ds.s3 * ds.z2
+	s.xl3 = -2.0 * ds.s3 * (ds.z3 - ds.z1)
+	s.xl4 = -2.0 * ds.s3 * (-21.0 - 9.0*ds.emsq) * zel
+	s.xgh2 = 2.0 * ds.s4 * ds.z32
+	s.xgh3 = 2.0 * ds.s4 * (ds.z33 - ds.z31)
+	s.xgh4 = -18.0 * ds.s4 * zel
+	s.xh2 = -2.0 * ds.s2 * ds.z22
+	s.xh3 = -2.0 * ds.s2 * (ds.z23 - ds.z21)
 
 	return
 }
@@ -973,16 +1013,9 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 			s.isimp = 1
 			tc := 0.0
 			inclm := s.inclo
+			ds := s.dscom(epoch, tc)
 
-			s.dscom(epoch, tc)
-
-			dpper(s.e3, s.ee2, s.peo, s.pgho, s.pho, s.pinco,
-				s.plo, s.se2, s.se3, s.sgh2, s.sgh3, s.sgh4,
-				s.sh2, s.sh3, s.si2, s.si3, s.sl2, s.sl3,
-				s.sl4, s.t, s.xgh2, s.xgh3, s.xgh4, s.xh2,
-				s.xh3, s.xi2, s.xi3, s.xl2, s.xl3, s.xl4,
-				s.zmol, s.zmos, inclm, s.init, s.ecco, s.inclo,
-				s.nodeo, s.argpo, s.mo, s.operationmode)
+			_, _, _, _, inclm = s.dpper()
 
 			argpm := 0.0
 			nodem := 0.0
