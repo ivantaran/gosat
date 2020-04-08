@@ -222,19 +222,25 @@ type sgp4ds struct {
 }
 
 type tle struct {
-	class  byte
-	design string
-	epoch  float64
-	satn   int
-	xargpo float64
-	xbstar float64
-	xecco  float64
-	xinclo float64
-	xmo    float64
-	xnddot float64
-	xndot  float64
-	xno    float64
-	xnodeo float64
+	class   byte
+	cs1     int
+	cs2     int
+	design  string
+	elsetn  int
+	ephtype int
+	epoch   float64
+	revn    int
+	satn    int // catalog number
+	title   string
+	xargpo  float64
+	xbstar  float64
+	xecco   float64
+	xinclo  float64
+	xmo     float64
+	xnddot  float64
+	xndot   float64
+	xno     float64 // mean motion
+	xnodeo  float64
 }
 
 /* -----------------------------------------------------------------------------

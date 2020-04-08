@@ -1,6 +1,9 @@
 package gosat
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestInit(t *testing.T) {
 	t.Run("init test", func(t *testing.T) {
@@ -11,8 +14,12 @@ func TestInit(t *testing.T) {
 }
 
 func TestTleLoad(t *testing.T) {
-	err := LoadTle("SGP4-VER.TLE")
+	tleList, err := LoadTle("SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)
+	} else {
+		for _, t := range tleList {
+			fmt.Println(*t)
+		}
 	}
 }

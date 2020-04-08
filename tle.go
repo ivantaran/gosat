@@ -59,43 +59,87 @@ func jday(year int, days float64) (jd float64, jdFrac float64) {
 }
 
 // LoadTle load TLE data
-func LoadTle(fileName string) error {
+func LoadTle(fileName string) ([]*tle, error) {
+	const xpdotp = 1440.0 / TwoPi
 
 	file, err := os.Open(fileName)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	var t tle
-	for i := 0; i < 10 && scanner.Scan(); i++ {
+
+	lineFirstOk := false
+	lineSecondOk := false
+	var list []*tle
+	t := new(tle)
+	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) <= 0 {
+		if len(line) <= 0 || line[0] == '#' {
 			continue
+		} else if len(line) >= 69 {
+			switch line[0] {
+			case '1':
+				t.satn, err = strconv.Atoi(line[2:7])
+				t.class = line[7]
+				t.design = line[9:17]
+				year, _ := strconv.Atoi(line[18:20])
+				if year < 57 {
+					year += 1900 // TODO aged units
+				} else {
+					year += 2000
+				}
+				days, _ := strconv.ParseFloat(line[20:32], 64)
+				jd, jdFrac := jday(year, days)
+				t.epoch = jd + jdFrac
+				t.xndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
+				t.xnddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
+				t.xbstar, err = strconv.ParseFloat(strings.TrimSpace(line[53:54]+"."+line[54:59]+"e"+line[59:61]), 64)
+				t.ephtype, err = strconv.Atoi(line[62:63])
+				t.elsetn, err = strconv.Atoi(strings.TrimSpace(line[64:68]))
+				t.cs1, err = strconv.Atoi(line[68:69])
+
+				t.xno /= xpdotp
+				t.xndot /= xpdotp * 1440.0
+				t.xnddot /= xpdotp * 1440.0 * 1440.0
+
+				lineFirstOk = true
+				lineSecondOk = false
+			case '2':
+				satn, _ := strconv.Atoi(line[2:7])
+				if satn != t.satn {
+					fmt.Printf("different satn %d != %d\n", satn, t.satn)
+				}
+				t.xinclo, err = strconv.ParseFloat(strings.TrimSpace(line[8:16]), 64)
+				t.xnodeo, err = strconv.ParseFloat(strings.TrimSpace(line[17:25]), 64)
+				t.xecco, err = strconv.ParseFloat("."+strings.TrimSpace(line[26:33]), 64)
+				t.xargpo, err = strconv.ParseFloat(strings.TrimSpace(line[34:42]), 64)
+				t.xmo, err = strconv.ParseFloat(strings.TrimSpace(line[43:51]), 64)
+				t.xno, err = strconv.ParseFloat(strings.TrimSpace(line[52:63]), 64)
+				t.revn, err = strconv.Atoi(strings.TrimSpace(line[63:68]))
+				t.cs2, err = strconv.Atoi(line[68:69])
+
+				t.xinclo *= Deg2Rad
+				t.xnodeo *= Deg2Rad
+				t.xargpo *= Deg2Rad
+				t.xmo *= Deg2Rad
+
+				lineSecondOk = true
+			default:
+				break
+			}
+		} else {
+			t.title = strings.TrimSpace(line)
 		}
-		switch line[0] {
-		case '#':
-			fmt.Println("comment")
-		case '1':
-			fmt.Println("line 1")
-			t.satn, _ = strconv.Atoi(line[2:7])
-			t.class = line[7]
-			t.design = line[9:17]
-			year, _ := strconv.Atoi(line[18:20])
-			days, _ := strconv.ParseFloat(line[20:32], 64)
-			jd, jdFrac := jday(year, days)
-			t.epoch = jd + jdFrac
-			t.xndot, _ = strconv.ParseFloat(line[33:43], 64)
-			t.xnddot, _ = strconv.ParseFloat(line[44:45]+"."+line[45:50]+"e"+line[50:52], 64)
-			fmt.Println(t, string(t.class))
-		case '2':
-			fmt.Println("line 2")
-		default:
-			fmt.Println(strings.TrimSpace(line))
+		if lineFirstOk && lineSecondOk {
+			lineFirstOk = false
+			lineSecondOk = false
+			list = append(list, t)
+			t = new(tle)
 		}
 	}
 
-	return nil
+	return list, nil
 }
