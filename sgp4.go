@@ -1,13 +1,15 @@
 package gosat
 
-import "math"
+import (
+	"errors"
+	"math"
+)
 
 //Constants
 const (
 	TwoPi   = math.Pi * 2.0
 	Deg2Rad = math.Pi / 180.0
 	X2O3    = 2.0 / 3.0
-	Temp4   = 1.5e-12
 )
 
 type elsetrec struct {
@@ -120,7 +122,7 @@ type elsetrec struct {
 	ecco        float64
 	argpo       float64
 	mo          float64
-	no_kozai    float64
+	noKozai     float64
 
 	// sgp4fix add new variables from tle
 	classification rune
@@ -129,7 +131,7 @@ type elsetrec struct {
 	elnum          int // TODO: long originally
 	revnum         int // TODO: long originally
 	// sgp4fix add unkozai'd variable
-	no_unkozai float64
+	noUnkozai float64
 	// sgp4fix add singly averaged variables
 	am float64
 	em float64
@@ -221,7 +223,8 @@ type sgp4ds struct {
 	z33    float64
 }
 
-type tle struct {
+//Tle TLE record container
+type Tle struct {
 	class   byte
 	cs1     int
 	cs2     int
@@ -473,21 +476,21 @@ func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp floa
 func (s *elsetrec) initl(epoch float64) *initlVars {
 	var v initlVars
 	/* ------------- calculate auxillary epoch quantities ---------- */
-	eccsq := s.ecco * s.ecco
-	v.omeosq = 1.0 - eccsq
+	v.eccsq = s.ecco * s.ecco
+	v.omeosq = 1.0 - v.eccsq
 	v.rteosq = math.Sqrt(v.omeosq)
 	v.cosio = math.Cos(s.inclo)
 	v.cosio2 = v.cosio * v.cosio
 
 	/* ------------------ un-kozai the mean motion ----------------- */
-	ak := math.Pow(s.xke/s.no_kozai, X2O3)
+	ak := math.Pow(s.xke/s.noKozai, X2O3)
 	d1 := 0.75 * s.j2 * (3.0*v.cosio2 - 1.0) / (v.rteosq * v.omeosq)
 	del := d1 / (ak * ak)
 	adel := ak * (1.0 - del*del - del*(1.0/3.0+134.0*del*del/81.0))
 	del = d1 / (adel * adel)
-	s.no_unkozai = s.no_kozai / (1.0 + del)
+	s.noUnkozai = s.noKozai / (1.0 + del)
 
-	v.ao = math.Pow(s.xke/s.no_unkozai, X2O3)
+	v.ao = math.Pow(s.xke/s.noUnkozai, X2O3)
 	v.sinio = math.Sin(s.inclo)
 	po := v.ao * v.omeosq
 	v.con42 = 1.0 - 5.0*v.cosio2
@@ -583,6 +586,7 @@ func (s *elsetrec) getgravconst(whichconst string) {
 		s.j4 = -0.00000165597
 		s.j3oj2 = s.j3 / s.j2
 	case "wgs84":
+		fallthrough
 	default:
 		// ------------ wgs-84 constants ------------
 		s.mu = 398600.5            // in km3 / s2
@@ -593,6 +597,231 @@ func (s *elsetrec) getgravconst(whichconst string) {
 		s.j3 = -0.00000253215306
 		s.j4 = -0.00000161098761
 		s.j3oj2 = s.j3 / s.j2
+	}
+}
+
+/*-----------------------------------------------------------------------------
+*
+*                           procedure dspace
+*
+*  this procedure provides deep space contributions to mean elements for
+*    perturbing third body.  these effects have been averaged over one
+*    revolution of the sun and moon.  for earth resonance effects, the
+*    effects have been averaged over no revolutions of the satellite.
+*    (mean motion)
+*
+*  author        : david vallado                  719-573-2600   28 jun 2005
+*
+*  inputs        :
+*    d2201, d2211, d3210, d3222, d4410, d4422, d5220, d5232, d5421, d5433 -
+*    dedt        -
+*    del1, del2, del3  -
+*    didt        -
+*    dmdt        -
+*    dnodt       -
+*    domdt       -
+*    irez        - flag for resonance           0-none, 1-one day, 2-half day
+*    argpo       - argument of perigee
+*    argpdot     - argument of perigee dot (rate)
+*    t           - time
+*    tc          -
+*    gsto        - gst
+*    xfact       -
+*    xlamo       -
+*    no          - mean motion
+*    atime       -
+*    em          - eccentricity
+*    ft          -
+*    argpm       - argument of perigee
+*    inclm       - inclination
+*    xli         -
+*    mm          - mean anomaly
+*    xni         - mean motion
+*    nodem       - right ascension of ascending node
+*
+*  outputs       :
+*    atime       -
+*    em          - eccentricity
+*    argpm       - argument of perigee
+*    inclm       - inclination
+*    xli         -
+*    mm          - mean anomaly
+*    xni         -
+*    nodem       - right ascension of ascending node
+*    dndt        -
+*    nm          - mean motion
+*
+*  locals        :
+*    delt        -
+*    ft          -
+*    theta       -
+*    x2li        -
+*    x2omi       -
+*    xl          -
+*    xldot       -
+*    xnddt       -
+*    xndt        -
+*    xomi        -
+*
+*  coupling      :
+*    none        -
+*
+*  references    :
+*    hoots, roehrich, norad spacetrack report #3 1980
+*    hoots, norad spacetrack report #6 1986
+*    hoots, schumacher and glover 2004
+*    vallado, crawford, hujsak, kelso  2006
+----------------------------------------------------------------------------*/
+type dspaceVars struct {
+	tc,
+	argpm,
+	dndt,
+	em,
+	inclm,
+	mm,
+	nm,
+	nodem float64
+}
+
+func (vars *dspaceVars) dspace(s *elsetrec) {
+	// (
+	// 	int irez, double d2201, double d2211, double d3210, double d3222, double d4410,
+	// 	double d4422, double d5220, double d5232, double d5421, double d5433,
+	// 	double dedt, double del1, double del2, double del3, double didt, double dmdt,
+	// 	double dnodt, double domdt, double argpo, double argpdot, double t, double tc,
+	// 	double gsto, double xfact, double xlamo, double no, double &atime, double &em,
+	// 	double &argpm, double &inclm, double &xli, double &mm, double &xni,
+	// 	double &nodem, double &dndt, double &nm) {
+	// int iretn, iret;
+	// double delt, ft, theta, x2li, x2omi, xl, xldot, xnddt, xndt, xomi, g22, g32, g44, g52, g54,
+	// fasx2, fasx4, fasx6, rptim, step2, stepn, stepp;
+
+	// s.dspace(s.irez, s.d2201, s.d2211, s.d3210, s.d3222, s.d4410,
+	// 	s.d4422, s.d5220, s.d5232, s.d5421, s.d5433, s.dedt,
+	// 	s.del1, s.del2, s.del3, s.didt, s.dmdt, s.dnodt,
+	// 	s.domdt, s.argpo, s.argpdot, s.t, tc, s.gsto, s.xfact,
+	// 	s.xlamo, s.noUnkozai, s.atime, em, argpm, inclm, s.xli, mm,
+	// 	s.xni, nodem, dndt, nm)
+
+	const (
+		fasx2 = 0.13130908
+		fasx4 = 2.8843198
+		fasx6 = 0.37448087
+		g22   = 5.7686396
+		g32   = 0.95240898
+		g44   = 1.8014998
+		g52   = 1.0508330
+		g54   = 4.4108898
+		rptim = 4.37526908801129966e-3 // this equates to 7.29211514668855e-5 rad/sec
+		stepp = 720.0
+		stepn = -720.0
+		step2 = 259200.0
+	)
+
+	/* ----------- calculate deep space resonance effects ----------- */
+	vars.dndt = 0.0
+	theta := math.Mod(s.gsto+vars.tc*rptim, TwoPi)
+	vars.em += s.dedt * s.t
+
+	vars.inclm += s.didt * s.t
+	vars.argpm += s.domdt * s.t
+	vars.nodem += s.dnodt * s.t
+	vars.mm += s.dmdt * s.t
+
+	//   sgp4fix for negative inclinations
+	//   the following if statement should be commented out
+	//  if (inclm < 0.0)
+	// {
+	//    inclm = -inclm;
+	//    argpm = argpm - pi;
+	//    nodem = nodem + pi;
+	//  }
+
+	/* - update resonances : numerical (euler-maclaurin) integration - */
+	/* ------------------------- epoch restart ----------------------  */
+	//   sgp4fix for propagator problems
+	//   the following integration works for negative time steps and periods
+	//   the specific changes are unknown because the original code was so convoluted
+
+	// sgp4fix take out atime = 0.0 and fix for faster operation
+	ft := 0.0
+	if s.irez != 0 {
+		// sgp4fix streamline check
+		if (s.atime == 0.0) || (s.t*s.atime <= 0.0) || (math.Abs(s.t) < math.Abs(s.atime)) {
+			s.atime = 0.0
+			s.xni = s.noUnkozai // TODO !!!??
+			s.xli = s.xlamo
+		}
+		// sgp4fix move check outside loop
+		var delt float64
+		if s.t > 0.0 {
+			delt = stepp
+		} else {
+			delt = stepn
+		}
+
+		iretn := 381 // added for do loop
+		xndt := 0.0
+		xldot := 0.0
+		xnddt := 0.0
+		xomi := 0.0
+		x2li := 0.0
+		x2omi := 0.0
+		for iretn == 381 {
+			/* ------------------- dot terms calculated ------------- */
+			/* ----------- near - synchronous resonance terms ------- */
+			if s.irez != 2 {
+				xndt = s.del1*math.Sin(s.xli-fasx2) + s.del2*math.Sin(2.0*(s.xli-fasx4)) +
+					s.del3*math.Sin(3.0*(s.xli-fasx6))
+				xldot = s.xni + s.xfact
+				xnddt = s.del1*math.Cos(s.xli-fasx2) + 2.0*s.del2*math.Cos(2.0*(s.xli-fasx4)) +
+					3.0*s.del3*math.Cos(3.0*(s.xli-fasx6))
+				xnddt = xnddt * xldot
+			} else {
+				/* --------- near - half-day resonance terms -------- */
+				xomi = s.argpo + s.argpdot*s.atime
+				x2omi = xomi + xomi
+				x2li = s.xli + s.xli
+				xndt = s.d2201*math.Sin(x2omi+s.xli-g22) + s.d2211*math.Sin(s.xli-g22) +
+					s.d3210*math.Sin(xomi+s.xli-g32) + s.d3222*math.Sin(-xomi+s.xli-g32) +
+					s.d4410*math.Sin(x2omi+x2li-g44) + s.d4422*math.Sin(x2li-g44) +
+					s.d5220*math.Sin(xomi+s.xli-g52) + s.d5232*math.Sin(-xomi+s.xli-g52) +
+					s.d5421*math.Sin(xomi+x2li-g54) + s.d5433*math.Sin(-xomi+x2li-g54)
+				xldot = s.xni + s.xfact
+				xnddt = s.d2201*math.Cos(x2omi+s.xli-g22) + s.d2211*math.Cos(s.xli-g22) +
+					s.d3210*math.Cos(xomi+s.xli-g32) + s.d3222*math.Cos(-xomi+s.xli-g32) +
+					s.d5220*math.Cos(xomi+s.xli-g52) + s.d5232*math.Cos(-xomi+s.xli-g52) +
+					2.0*(s.d4410*math.Cos(x2omi+x2li-g44)+s.d4422*math.Cos(x2li-g44)+
+						s.d5421*math.Cos(xomi+x2li-g54)+s.d5433*math.Cos(-xomi+x2li-g54))
+				xnddt = xnddt * xldot
+			}
+
+			/* ----------------------- integrator ------------------- */
+			// sgp4fix move end checks to end of routine
+			if math.Abs(s.t-s.atime) >= stepp {
+				iretn = 381
+			} else { // exit here
+				ft = s.t - s.atime
+				iretn = 0
+			}
+
+			if iretn == 381 {
+				s.xli += xldot*delt + xndt*step2
+				s.xni += xndt*delt + xnddt*step2
+				s.atime += delt
+			}
+		}
+
+		vars.nm = s.xni + xndt*ft + xnddt*ft*ft*0.5
+		xl := s.xli + xldot*ft + xndt*ft*ft*0.5
+		if s.irez != 1 {
+			vars.mm = xl - 2.0*vars.nodem + 2.0*theta
+			vars.dndt = vars.nm - s.noUnkozai
+		} else {
+			vars.mm = xl - vars.nodem - vars.argpm + theta
+			vars.dndt = vars.nm - s.noUnkozai
+		}
+		vars.nm = s.noUnkozai + vars.dndt
 	}
 }
 
@@ -663,7 +892,8 @@ func (s *elsetrec) getgravconst(whichconst string) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(epoch float64, tc float64) (ds *sgp4ds) {
+func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
+
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -675,7 +905,9 @@ func (s *elsetrec) dscom(epoch float64, tc float64) (ds *sgp4ds) {
 		zsings = -0.98088458
 	)
 
-	s.nm = s.no_unkozai
+	var ds sgp4ds
+
+	s.nm = s.noUnkozai
 	s.em = s.ecco
 	ds.snodm = math.Sin(s.nodeo)
 	ds.cnodm = math.Cos(s.nodeo)
@@ -825,7 +1057,7 @@ func (s *elsetrec) dscom(epoch float64, tc float64) (ds *sgp4ds) {
 	s.xh2 = -2.0 * ds.s2 * ds.z22
 	s.xh3 = -2.0 * ds.s2 * (ds.z23 - ds.z21)
 
-	return
+	return &ds
 }
 
 /*-----------------------------------------------------------------------------
@@ -1114,7 +1346,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 			s.d5421 = temp * f542 * g521
 			s.d5433 = temp * f543 * g533
 			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, TwoPi)
-			s.xfact = s.mdot + dmdt + 2.0*(s.nodedot+dnodt-rptim) - s.no_unkozai
+			s.xfact = s.mdot + dmdt + 2.0*(s.nodedot+dnodt-rptim) - s.noUnkozai
 			em = emo
 			ds.emsq = emsqo
 		}
@@ -1133,19 +1365,21 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 			s.del3 = 3.0 * s.del1 * f330 * g300 * q33 * aonv
 			s.del1 = s.del1 * f311 * g310 * q31 * aonv
 			s.xlamo = math.Mod(s.mo+s.nodeo+s.argpo-theta, TwoPi)
-			s.xfact = s.mdot + xpidot - rptim + dmdt + domdt + dnodt - s.no_unkozai
+			s.xfact = s.mdot + xpidot - rptim + dmdt + domdt + dnodt - s.noUnkozai
 		}
 
 		/* ------------ for sgp4, initialize the integrator ---------- */
 		s.xli = s.xlamo
-		s.xni = s.no_unkozai
+		s.xni = s.noUnkozai
 		s.atime = 0.0
-		s.nm = s.no_unkozai + dndt
+		s.nm = s.noUnkozai + dndt
 	}
 	return
 }
 
-func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, epoch float64) {
+func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
+	const temp4 = 1.5e-12
+
 	/* ----------- set all near earth variables to zero ------------ */
 	s.isimp = 0
 	s.method = 'n'
@@ -1238,7 +1472,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 
 	s.error = 0
 	s.operationmode = opsmode
-	s.satnum = satn
+	s.satnum = t.satn
 
 	s.bstar = t.xbstar
 	s.ndot = t.xndot
@@ -1247,7 +1481,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 	s.argpo = t.xargpo
 	s.inclo = t.xinclo
 	s.mo = t.xmo
-	s.no_kozai = t.xno
+	s.noKozai = t.xno
 	s.nodeo = t.xnodeo
 
 	s.am = 0.0
@@ -1264,14 +1498,14 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 	s.init = 'y'
 	s.t = 0.0
 
-	iv := s.initl(epoch)
+	iv := s.initl(t.epoch)
 
-	s.a = math.Pow(s.no_unkozai*s.tumin, -X2O3)
+	s.a = math.Pow(s.noUnkozai*s.tumin, -X2O3)
 	s.alta = s.a*(1.0+s.ecco) - 1.0
 	s.altp = s.a*(1.0-s.ecco) - 1.0
 	s.error = 0
 
-	if (iv.omeosq >= 0.0) || (s.no_unkozai >= 0.0) {
+	if (iv.omeosq >= 0.0) || (s.noUnkozai >= 0.0) {
 		s.isimp = 0
 		if iv.rp < (220.0/s.radiusearthkm + 1.0) {
 			s.isimp = 1
@@ -1299,24 +1533,24 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 		psisq := math.Abs(1.0 - etasq)
 		coef := qzms24 * math.Pow(tsi, 4.0)
 		coef1 := coef / math.Pow(psisq, 3.5)
-		cc2 := coef1 * s.no_unkozai * (iv.ao*(1.0+1.5*etasq+eeta*(4.0+etasq)) +
+		cc2 := coef1 * s.noUnkozai * (iv.ao*(1.0+1.5*etasq+eeta*(4.0+etasq)) +
 			0.375*s.j2*tsi/psisq*s.con41*(8.0+3.0*etasq*(8.0+etasq)))
 		s.cc1 = s.bstar * cc2
 		cc3 := 0.0
 		if s.ecco > 1.0e-4 {
-			cc3 = -2.0 * coef * tsi * s.j3oj2 * s.no_unkozai * iv.sinio / s.ecco
+			cc3 = -2.0 * coef * tsi * s.j3oj2 * s.noUnkozai * iv.sinio / s.ecco
 		}
 		s.x1mth2 = 1.0 - iv.cosio2
-		s.cc4 = 2.0 * s.no_unkozai * coef1 * iv.ao * iv.omeosq * (s.eta*(2.0+0.5*etasq) +
+		s.cc4 = 2.0 * s.noUnkozai * coef1 * iv.ao * iv.omeosq * (s.eta*(2.0+0.5*etasq) +
 			s.ecco*(0.5+2.0*etasq) -
 			s.j2*tsi/(iv.ao*psisq)*(-3.0*s.con41*(1.0-2.0*eeta+etasq*(1.5-0.5*eeta))+
 				0.75*s.x1mth2*(2.0*etasq-eeta*(1.0+etasq))*math.Cos(2.0*s.argpo)))
 		s.cc5 = 2.0 * coef1 * iv.ao * iv.omeosq * (1.0 + 2.75*(etasq+eeta) + eeta*etasq)
 		cosio4 := iv.cosio2 * iv.cosio2
-		temp1 := 1.5 * s.j2 * pinvsq * s.no_unkozai
+		temp1 := 1.5 * s.j2 * pinvsq * s.noUnkozai
 		temp2 := 0.5 * temp1 * s.j2 * pinvsq
-		temp3 := -0.46875 * s.j4 * pinvsq * pinvsq * s.no_unkozai
-		s.mdot = s.no_unkozai + 0.5*temp1*iv.rteosq*s.con41 +
+		temp3 := -0.46875 * s.j4 * pinvsq * pinvsq * s.noUnkozai
+		s.mdot = s.noUnkozai + 0.5*temp1*iv.rteosq*s.con41 +
 			0.0625*temp2*iv.rteosq*(13.0-78.0*iv.cosio2+137.0*cosio4)
 		s.argpdot = -0.5*temp1*iv.con42 + 0.0625*temp2*(7.0-114.0*iv.cosio2+395.0*cosio4) +
 			temp3*(3.0-36.0*iv.cosio2+49.0*cosio4)
@@ -1334,7 +1568,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 		if math.Abs(iv.cosio+1.0) > 1.5e-12 {
 			s.xlcof = -0.25 * s.j3oj2 * iv.sinio * (3.0 + 5.0*iv.cosio) / (1.0 + iv.cosio)
 		} else {
-			s.xlcof = -0.25 * s.j3oj2 * iv.sinio * (3.0 + 5.0*iv.cosio) / Temp4
+			s.xlcof = -0.25 * s.j3oj2 * iv.sinio * (3.0 + 5.0*iv.cosio) / temp4
 		}
 		s.aycof = -0.5 * s.j3oj2 * iv.sinio
 		delmotemp := 1.0 + s.eta*math.Cos(s.mo)
@@ -1343,12 +1577,12 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 		s.x7thm1 = 7.0*iv.cosio2 - 1.0
 
 		/* --------------- deep space initialization ------------- */
-		if (TwoPi / s.no_unkozai) >= 225.0 {
+		if (TwoPi / s.noUnkozai) >= 225.0 {
 			s.method = 'd'
 			s.isimp = 1
 			tc := 0.0
 			inclm := s.inclo
-			ds := s.dscom(epoch, tc)
+			ds := s.dscom(t.epoch, tc)
 
 			_, _, _, _, inclm = s.dpper()
 
@@ -1370,4 +1604,346 @@ func (s *elsetrec) sgp4init(whichconst string, t *tle, opsmode rune, satn int, e
 			s.t5cof = 0.2 * (3.0*s.d4 + 12.0*s.cc1*s.d3 + 6.0*s.d2*s.d2 + 15.0*cc1sq*(2.0*s.d2+cc1sq))
 		}
 	}
+
+	/* finally propogate to zero epoch to initialize all others. */
+	// sgp4fix take out check to let satellites process until they are actually below earth surface
+	//       if(satrec.error == 0)
+	var r [6]float64
+	err := s.sgp4(0.0, r[0:3], r[3:])
+
+	s.init = 'n'
+
+	return err
+}
+
+/*-----------------------------------------------------------------------------
+*
+*                             procedure sgp4
+*
+*  this procedure is the sgp4 prediction model from space command. this is an
+*    updated and combined version of sgp4 and sdp4, which were originally
+*    published separately in spacetrack report #3. this version follows the
+*    methodology from the aiaa paper (2006) describing the history and
+*    development of the code.
+*
+*  author        : david vallado                  719-573-2600   28 jun 2005
+*
+*  inputs        :
+*    satrec	 - initialised structure from sgp4init() call.
+*    tsince	 - time since epoch (minutes)
+*
+*  outputs       :
+*    r           - position vector                     km
+*    v           - velocity                            km/sec
+*  return code - non-zero on error.
+*                   1 - mean elements, ecc >= 1.0 or ecc < -0.001 or a < 0.95 er
+*                   2 - mean motion less than 0.0
+*                   3 - pert elements, ecc < 0.0  or  ecc > 1.0
+*                   4 - semi-latus rectum < 0.0
+*                   5 - epoch elements are sub-orbital
+*                   6 - satellite has decayed
+*
+*  locals        :
+*    am          -
+*    axnl, aynl        -
+*    betal       -
+*    cosim   , sinim   , cosomm  , sinomm  , cnod    , snod    , cos2u   ,
+*    sin2u   , coseo1  , sineo1  , cosi    , sini    , cosip   , sinip   ,
+*    cosisq  , cossu   , sinsu   , cosu    , sinu
+*    delm        -
+*    delomg      -
+*    dndt        -
+*    eccm        -
+*    emsq        -
+*    ecose       -
+*    el2         -
+*    eo1         -
+*    eccp        -
+*    esine       -
+*    argpm       -
+*    argpp       -
+*    omgadf      -c
+*    pl          -
+*    r           -
+*    rtemsq      -
+*    rdotl       -
+*    rl          -
+*    rvdot       -
+*    rvdotl      -
+*    su          -
+*    t2  , t3   , t4    , tc
+*    tem5, temp , temp1 , temp2  , tempa  , tempe  , templ
+*    u   , ux   , uy    , uz     , vx     , vy     , vz
+*    inclm       - inclination
+*    mm          - mean anomaly
+*    nm          - mean motion
+*    nodem       - right asc of ascending node
+*    xinc        -
+*    xincp       -
+*    xl          -
+*    xlm         -
+*    mp          -
+*    xmdf        -
+*    xmx         -
+*    xmy         -
+*    nodedf      -
+*    xnode       -
+*    nodep       -
+*    np          -
+*
+*  coupling      :
+*    getgravconst- no longer used. Variables are conatined within satrec
+*    dpper
+*    dpspace
+*
+*  references    :
+*    hoots, roehrich, norad spacetrack report #3 1980
+*    hoots, norad spacetrack report #6 1986
+*    hoots, schumacher and glover 2004
+*    vallado, crawford, hujsak, kelso  2006
+----------------------------------------------------------------------------*/
+
+func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
+
+	// double am, axnl, aynl, betal, cosim, cnod, cos2u, coseo1, cosi, cosip, cosisq, cossu, cosu,
+	//     delm, delomg, em, emsq, ecose, el2, eo1, ep, esine, argpm, argpp, argpdf, pl,
+	//     mrt = 0.0, mvt, rdotl, rl, rvdot, rvdotl, sinim, sin2u, sineo1, sini, sinip, sinsu, sinu,
+	//     snod, su, t2, t3, t4, tem5, temp, temp1, temp2, tempa, tempe, templ, u, ux, uy, uz, vx, vy,
+	//     vz, inclm, mm, nm, nodem, xinc, xincp, xl, xlm, mp, xmdf, xmx, xmy, nodedf, xnode, nodep,
+	//     tc, dndt, twopi, x2o3, vkmpersec, delmtemp;
+	// int ktr;
+
+	/* ------------------ set mathematical constants --------------- */
+	// sgp4fix divisor for divide by zero check on inclination
+	// the old check used 1.0 + cos(pi-1.0e-9), but then compared it to
+	// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
+	const temp4 = 1.5e-12
+
+	var dspaceVars dspaceVars
+
+	// sgp4fix identify constants and allow alternate values
+	// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
+	vkmpersec := s.radiusearthkm * s.xke / 60.0
+
+	/* --------------------- clear sgp4 error flag ----------------- */
+	s.t = tsince
+	s.error = 0
+
+	/* ------- update for secular gravity and atmospheric drag ----- */
+	xmdf := s.mo + s.mdot*s.t
+	argpdf := s.argpo + s.argpdot*s.t
+	nodedf := s.nodeo + s.nodedot*s.t
+	dspaceVars.argpm = argpdf
+	dspaceVars.mm = xmdf
+	t2 := s.t * s.t
+	dspaceVars.nodem = nodedf + s.nodecf*t2
+	tempa := 1.0 - s.cc1*s.t
+	tempe := s.bstar * s.cc4 * s.t
+	templ := s.t2cof * t2
+
+	if s.isimp != 1 {
+		delomg := s.omgcof * s.t
+		// sgp4fix use mutliply for speed instead of pow
+		delmtemp := 1.0 + s.eta*math.Cos(xmdf)
+		delm := s.xmcof * (delmtemp*delmtemp*delmtemp - s.delmo)
+		temp := delomg + delm
+		dspaceVars.mm = xmdf + temp
+		dspaceVars.argpm = argpdf - temp
+		t3 := t2 * s.t
+		t4 := t3 * s.t
+		tempa = tempa - s.d2*t2 - s.d3*t3 - s.d4*t4
+		tempe = tempe + s.bstar*s.cc5*(math.Sin(dspaceVars.mm)-s.sinmao)
+		templ = templ + s.t3cof*t3 + t4*(s.t4cof+s.t*s.t5cof)
+	}
+
+	dspaceVars.nm = s.noUnkozai
+	dspaceVars.em = s.ecco
+	dspaceVars.inclm = s.inclo
+	if s.method == 'd' {
+		dspaceVars.tc = s.t
+		dspaceVars.dspace(s)
+	}
+
+	if dspaceVars.nm <= 0.0 {
+		s.error = 2
+		// sgp4fix add return
+		return errors.New("nm <= 0.0")
+	}
+	am := math.Pow(s.xke/dspaceVars.nm, X2O3) * tempa * tempa
+	dspaceVars.nm = s.xke / math.Pow(am, 1.5)
+	dspaceVars.em -= tempe
+
+	// fix tolerance for error recognition
+	// sgp4fix am is fixed from the previous nm check
+	if (dspaceVars.em >= 1.0) || (dspaceVars.em < -0.001) /* || (am < 0.95)*/ {
+		s.error = 1
+		// sgp4fix to return if there is an error in eccentricity
+		return errors.New("(em >= 1.0) || (em < -0.001)")
+	}
+	// sgp4fix fix tolerance to avoid a divide by zero
+	if dspaceVars.em < 1.0e-6 {
+		dspaceVars.em = 1.0e-6
+	}
+	dspaceVars.mm += s.noUnkozai * templ
+	xlm := dspaceVars.mm + dspaceVars.argpm + dspaceVars.nodem
+	emsq := dspaceVars.em * dspaceVars.em
+	temp := 1.0 - emsq
+
+	dspaceVars.nodem = math.Mod(dspaceVars.nodem, TwoPi)
+	dspaceVars.argpm = math.Mod(dspaceVars.argpm, TwoPi)
+	xlm = math.Mod(xlm, TwoPi)
+	dspaceVars.mm = math.Mod(xlm-dspaceVars.argpm-dspaceVars.nodem, TwoPi)
+
+	// sgp4fix recover singly averaged mean elements
+	s.am = am
+	s.em = dspaceVars.em
+	s.im = dspaceVars.inclm
+	s.Om = dspaceVars.nodem
+	s.om = dspaceVars.argpm
+	s.mm = dspaceVars.mm
+	s.nm = dspaceVars.nm
+
+	/* ----------------- compute extra mean quantities ------------- */
+	sinim := math.Sin(dspaceVars.inclm)
+	cosim := math.Cos(dspaceVars.inclm)
+
+	/* -------------------- add lunar-solar periodics -------------- */
+	ep := dspaceVars.em
+	xincp := dspaceVars.inclm
+	argpp := dspaceVars.argpm
+	nodep := dspaceVars.nodem
+	mp := dspaceVars.mm
+	sinip := sinim
+	cosip := cosim
+	if s.method == 'd' {
+		ep, xincp, nodep, argpp, mp = s.dpper() // TODO 'n' !!!
+		// dpper(s.e3, s.ee2, s.peo, s.pgho, s.pho, s.pinco, s.plo,
+		// 	s.se2, s.se3, s.sgh2, s.sgh3, s.sgh4, s.sh2, s.sh3,
+		// 	s.si2, s.si3, s.sl2, s.sl3, s.sl4, s.t, s.xgh2,
+		// 	s.xgh3, s.xgh4, s.xh2, s.xh3, s.xi2, s.xi3, s.xl2,
+		// 	s.xl3, s.xl4, s.zmol, s.zmos, s.inclo, 'n', ep, xincp, nodep,
+		// 	argpp, mp, s.operationmode)
+		if xincp < 0.0 {
+			xincp = -xincp
+			nodep = nodep + math.Pi
+			argpp = argpp - math.Pi
+		}
+		if (ep < 0.0) || (ep > 1.0) {
+			s.error = 3
+			// sgp4fix add return
+			return errors.New("(ep < 0.0) || (ep > 1.0)")
+		}
+	}
+
+	/* -------------------- long period periodics ------------------ */
+	if s.method == 'd' {
+		sinip = math.Sin(xincp)
+		cosip = math.Cos(xincp)
+		s.aycof = -0.5 * s.j3oj2 * sinip
+		// sgp4fix for divide by zero for xincp = 180 deg
+		if math.Abs(cosip+1.0) > 1.5e-12 {
+			s.xlcof = -0.25 * s.j3oj2 * sinip * (3.0 + 5.0*cosip) / (1.0 + cosip)
+		} else {
+			s.xlcof = -0.25 * s.j3oj2 * sinip * (3.0 + 5.0*cosip) / temp4
+		}
+	}
+	axnl := ep * math.Cos(argpp)
+	temp = 1.0 / (am * (1.0 - ep*ep))
+	aynl := ep*math.Sin(argpp) + temp*s.aycof
+	xl := mp + argpp + nodep + temp*s.xlcof*axnl
+
+	/* --------------------- solve kepler's equation --------------- */
+	u := math.Mod(xl-nodep, TwoPi)
+	eo1 := u
+	tem5 := 9999.9
+	ktr := 1
+	//   sgp4fix for kepler iteration
+	//   the following iteration needs better limits on corrections
+	sineo1 := 0.0
+	coseo1 := 0.0
+	for (math.Abs(tem5) >= 1.0e-12) && (ktr <= 10) {
+		sineo1 = math.Sin(eo1)
+		coseo1 = math.Cos(eo1)
+		tem5 = 1.0 - coseo1*axnl - sineo1*aynl
+		tem5 = (u - aynl*coseo1 + axnl*sineo1 - eo1) / tem5
+		if math.Abs(tem5) >= 0.95 {
+			if tem5 > 0.0 {
+				tem5 = 0.95
+			} else {
+				tem5 = -0.95
+			}
+		}
+		eo1 = eo1 + tem5
+		ktr = ktr + 1
+	}
+
+	/* ------------- short period preliminary quantities ----------- */
+	ecose := axnl*coseo1 + aynl*sineo1
+	esine := axnl*sineo1 - aynl*coseo1
+	el2 := axnl*axnl + aynl*aynl
+	pl := am * (1.0 - el2)
+	if pl < 0.0 {
+		s.error = 4
+		// sgp4fix add return
+		return errors.New("pl < 0.0")
+	}
+	rl := am * (1.0 - ecose)
+	rdotl := math.Sqrt(am) * esine / rl
+	rvdotl := math.Sqrt(pl) / rl
+	betal := math.Sqrt(1.0 - el2)
+	temp = esine / (1.0 + betal)
+	sinu := am / rl * (sineo1 - aynl - axnl*temp)
+	cosu := am / rl * (coseo1 - axnl + aynl*temp)
+	su := math.Atan2(sinu, cosu)
+	sin2u := (cosu + cosu) * sinu
+	cos2u := 1.0 - 2.0*sinu*sinu
+	temp = 1.0 / pl
+	temp1 := 0.5 * s.j2 * temp
+	temp2 := temp1 * temp
+
+	/* -------------- update for short period periodics ------------ */
+	if s.method == 'd' {
+		cosisq := cosip * cosip
+		s.con41 = 3.0*cosisq - 1.0
+		s.x1mth2 = 1.0 - cosisq
+		s.x7thm1 = 7.0*cosisq - 1.0
+	}
+	mrt := rl*(1.0-1.5*temp2*betal*s.con41) + 0.5*temp1*s.x1mth2*cos2u
+	su = su - 0.25*temp2*s.x7thm1*sin2u
+	xnode := nodep + 1.5*temp2*cosip*sin2u
+	xinc := xincp + 1.5*temp2*cosip*sinip*cos2u
+	mvt := rdotl - dspaceVars.nm*temp1*s.x1mth2*sin2u/s.xke
+	rvdot := rvdotl + dspaceVars.nm*temp1*(s.x1mth2*cos2u+1.5*s.con41)/s.xke
+
+	/* --------------------- orientation vectors ------------------- */
+	sinsu := math.Sin(su)
+	cossu := math.Cos(su)
+	snod := math.Sin(xnode)
+	cnod := math.Cos(xnode)
+	sini := math.Sin(xinc)
+	cosi := math.Cos(xinc)
+	xmx := -snod * cosi
+	xmy := cnod * cosi
+	ux := xmx*sinsu + cnod*cossu
+	uy := xmy*sinsu + snod*cossu
+	uz := sini * sinsu
+	vx := xmx*cossu - cnod*sinsu
+	vy := xmy*cossu - snod*sinsu
+	vz := sini * cossu
+
+	/* --------- position and velocity (in km and km/sec) ---------- */
+	r[0] = (mrt * ux) * s.radiusearthkm
+	r[1] = (mrt * uy) * s.radiusearthkm
+	r[2] = (mrt * uz) * s.radiusearthkm
+	v[0] = (mvt*ux + rvdot*vx) * vkmpersec
+	v[1] = (mvt*uy + rvdot*vy) * vkmpersec
+	v[2] = (mvt*uz + rvdot*vz) * vkmpersec
+
+	// sgp4fix for decaying satellites
+	if mrt < 1.0 {
+		s.error = 6
+		return errors.New("mrt < 1.0")
+	}
+
+	return nil
 }

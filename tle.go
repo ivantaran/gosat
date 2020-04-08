@@ -59,7 +59,7 @@ func jday(year int, days float64) (jd float64, jdFrac float64) {
 }
 
 // LoadTle load TLE data
-func LoadTle(fileName string) ([]*tle, error) {
+func LoadTle(fileName string) ([]*Tle, error) {
 	const xpdotp = 1440.0 / TwoPi
 
 	file, err := os.Open(fileName)
@@ -73,8 +73,8 @@ func LoadTle(fileName string) ([]*tle, error) {
 
 	lineFirstOk := false
 	lineSecondOk := false
-	var list []*tle
-	t := new(tle)
+	var list []*Tle
+	t := new(Tle)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) <= 0 || line[0] == '#' {
@@ -93,7 +93,7 @@ func LoadTle(fileName string) ([]*tle, error) {
 				}
 				days, _ := strconv.ParseFloat(line[20:32], 64)
 				jd, jdFrac := jday(year, days)
-				t.epoch = jd + jdFrac
+				t.epoch = jd + jdFrac - 2433281.5
 				t.xndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
 				t.xnddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
 				t.xbstar, err = strconv.ParseFloat(strings.TrimSpace(line[53:54]+"."+line[54:59]+"e"+line[59:61]), 64)
@@ -137,7 +137,7 @@ func LoadTle(fileName string) ([]*tle, error) {
 			lineFirstOk = false
 			lineSecondOk = false
 			list = append(list, t)
-			t = new(tle)
+			t = new(Tle)
 		}
 	}
 
