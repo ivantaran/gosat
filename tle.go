@@ -87,9 +87,9 @@ func LoadTle(fileName string) ([]*Tle, error) {
 				t.design = line[9:17]
 				year, _ := strconv.Atoi(line[18:20])
 				if year < 57 {
-					year += 1900 // TODO aged units
+					year += 2000 // TODO aged units
 				} else {
-					year += 2000
+					year += 1900
 				}
 				days, _ := strconv.ParseFloat(line[20:32], 64)
 				jd, jdFrac := jday(year, days)
@@ -101,7 +101,6 @@ func LoadTle(fileName string) ([]*Tle, error) {
 				t.elsetn, err = strconv.Atoi(strings.TrimSpace(line[64:68]))
 				t.cs1, err = strconv.Atoi(line[68:69])
 
-				t.xno /= xpdotp
 				t.xndot /= xpdotp * 1440.0
 				t.xnddot /= xpdotp * 1440.0 * 1440.0
 
@@ -125,6 +124,7 @@ func LoadTle(fileName string) ([]*Tle, error) {
 				t.xnodeo *= Deg2Rad
 				t.xargpo *= Deg2Rad
 				t.xmo *= Deg2Rad
+				t.xno /= xpdotp
 
 				lineSecondOk = true
 			default:

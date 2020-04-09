@@ -313,6 +313,26 @@ type Tle struct {
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
 func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp float64, mp float64) {
+	// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
+	// 	satrec.plo, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
+	// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
+	// 	satrec.sl4, satrec.t, satrec.xgh2, satrec.xgh3, satrec.xgh4, satrec.xh2,
+	// 	satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2, satrec.xl3, satrec.xl4,
+	// 	satrec.zmol, satrec.zmos, inclm, satrec.init, satrec.ecco, satrec.inclo,
+	// 	satrec.nodeo, satrec.argpo, satrec.mo, satrec.operationmode);
+
+	// static void dpper(double e3, double ee2, double peo, double pgho, double pho, double pinco,
+	// 	double plo, double se2, double se3, double sgh2, double sgh3, double sgh4,
+	// 	double sh2, double sh3, double si2, double si3, double sl2, double sl3,
+	// 	double sl4, double t, double xgh2, double xgh3, double xgh4, double xh2,
+	// 	double xh3, double xi2, double xi3, double xl2, double xl3, double xl4,
+	// 	double zmol, double zmos, double inclo, char init, double &ep, double &inclp,
+	// 	double &nodep, double &argpp, double &mp, char opsmode) {
+
+	// double alfdp, betdp, cosip, cosop, dalf, dbet, dls, f2, f3, pe, pgh, ph, pinc, pl, sel, ses,
+	// sghl, sghs, shll, shs, sil, sinip, sinop, sinzf, sis, sll, sls, xls, xnoh, zf, zm, zel, zes,
+	// znl, zns;
+
 	/* ---------------------- constants ----------------------------- */
 	const (
 		zns = 1.19459e-5
@@ -893,6 +913,37 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
 func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
+	// static void dscom(double epoch, double ep, double argpp, double tc, double inclp, double nodep,
+	// 	double np, double &snodm, double &cnodm, double &sinim, double &cosim,
+	// 	double &sinomm, double &cosomm, double &day, double &e3, double &ee2, double &em,
+	// 	double &emsq, double &gam, double &peo, double &pgho, double &pho, double &pinco,
+	// 	double &plo, double &rtemsq, double &se2, double &se3, double &sgh2, double &sgh3,
+	// 	double &sgh4, double &sh2, double &sh3, double &si2, double &si3, double &sl2,
+	// 	double &sl3, double &sl4, double &s1, double &s2, double &s3, double &s4,
+	// 	double &s5, double &s6, double &s7, double &ss1, double &ss2, double &ss3,
+	// 	double &ss4, double &ss5, double &ss6, double &ss7, double &sz1, double &sz2,
+	// 	double &sz3, double &sz11, double &sz12, double &sz13, double &sz21, double &sz22,
+	// 	double &sz23, double &sz31, double &sz32, double &sz33, double &xgh2,
+	// 	double &xgh3, double &xgh4, double &xh2, double &xh3, double &xi2, double &xi3,
+	// 	double &xl2, double &xl3, double &xl4, double &nm, double &z1, double &z2,
+	// 	double &z3, double &z11, double &z12, double &z13, double &z21, double &z22,
+	// 	double &z23, double &z31, double &z32, double &z33, double &zmol, double &zmos) {
+
+	// dscom(epoch, satrec.ecco, satrec.argpo, tc, satrec.inclo, satrec.nodeo,
+	// 	satrec.no_unkozai, snodm, cnodm, sinim, cosim, sinomm, cosomm, day, satrec.e3,
+	// 	satrec.ee2, em, emsq, gam, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
+	// 	satrec.plo, rtemsq, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
+	// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
+	// 	satrec.sl4, s1, s2, s3, s4, s5, s6, s7, ss1, ss2, ss3, ss4, ss5, ss6, ss7, sz1,
+	// 	sz2, sz3, sz11, sz12, sz13, sz21, sz22, sz23, sz31, sz32, sz33, satrec.xgh2,
+	// 	satrec.xgh3, satrec.xgh4, satrec.xh2, satrec.xh3, satrec.xi2, satrec.xi3,
+	// 	satrec.xl2, satrec.xl3, satrec.xl4, nm, z1, z2, z3, z11, z12, z13, z21, z22, z23,
+	// 	z31, z32, z33, satrec.zmol, satrec.zmos);
+
+	// int lsflg;
+	// double a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, betasq, cc, ctem, stem, x1, x2, x3, x4, x5, x6,
+	// 	x7, x8, xnodce, xnoi, zcosg, zcosgl, zcosh, zcoshl, zcosi, zcosil, zsing, zsingl, zsinh,
+	// 	zsinhl, zsini, zsinil, zx, zy;
 
 	const (
 		zes    = 0.01675
@@ -907,8 +958,8 @@ func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
 
 	var ds sgp4ds
 
-	s.nm = s.noUnkozai
-	s.em = s.ecco
+	ds.nm = s.noUnkozai
+	ds.em = s.ecco
 	ds.snodm = math.Sin(s.nodeo)
 	ds.cnodm = math.Cos(s.nodeo)
 	ds.sinomm = math.Sin(s.argpo)
@@ -925,7 +976,7 @@ func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
 	s.plo = 0.0
 	s.pgho = 0.0
 	s.pho = 0.0
-	ds.day = epoch + 18261.5 + tc/1440.0
+	ds.day = epoch + 18261.5 + tc/1440.0 //TODO remove day from struct, it's local variable
 	xnodce := math.Mod(4.5236020-9.2422029e-4*ds.day, TwoPi)
 	stem := math.Sin(xnodce)
 	ctem := math.Cos(xnodce)

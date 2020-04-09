@@ -20,7 +20,7 @@ func TestTleLoad(t *testing.T) {
 		t.Error(err)
 	} else {
 		for _, tleItem := range tleList {
-			if tleItem.satn == 16925 {
+			if tleItem.satn == 11801 {
 				fmt.Print("Deep space, perigee = 82.48 (<98) for s4 > 20 mod")
 			}
 			err = sat.sgp4init("wgs84", tleItem, 'i')
