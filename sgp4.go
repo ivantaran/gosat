@@ -173,54 +173,63 @@ type initlVars struct {
 }
 
 type sgp4ds struct {
-	cnodm  float64
-	cosim  float64
-	cosomm float64
-	day    float64
-	emsq   float64
-	gam    float64
-	rtemsq float64
-	s1     float64
-	s2     float64
-	s3     float64
-	s4     float64
-	s5     float64
-	s6     float64
-	s7     float64
-	sinim  float64
-	sinomm float64
-	snodm  float64
-	ss1    float64
-	ss2    float64
-	ss3    float64
-	ss4    float64
-	ss5    float64
-	ss6    float64
-	ss7    float64
-	sz1    float64
-	sz11   float64
-	sz12   float64
-	sz13   float64
-	sz2    float64
-	sz21   float64
-	sz22   float64
-	sz23   float64
-	sz3    float64
-	sz31   float64
-	sz32   float64
-	sz33   float64
-	z1     float64
-	z11    float64
-	z12    float64
-	z13    float64
-	z2     float64
-	z21    float64
-	z22    float64
-	z23    float64
-	z3     float64
-	z31    float64
-	z32    float64
-	z33    float64
+	cnodm                   float64
+	cosim                   float64
+	cosomm                  float64
+	day                     float64
+	em                      float64
+	emsq                    float64
+	gam                     float64
+	nm                      float64
+	mm, nodem, argpm, inclm float64
+	rtemsq                  float64
+	s1                      float64
+	s2                      float64
+	s3                      float64
+	s4                      float64
+	s5                      float64
+	s6                      float64
+	s7                      float64
+	sinim                   float64
+	sinomm                  float64
+	snodm                   float64
+	ss1                     float64
+	ss2                     float64
+	ss3                     float64
+	ss4                     float64
+	ss5                     float64
+	ss6                     float64
+	ss7                     float64
+	sz1                     float64
+	sz11                    float64
+	sz12                    float64
+	sz13                    float64
+	sz2                     float64
+	sz21                    float64
+	sz22                    float64
+	sz23                    float64
+	sz3                     float64
+	sz31                    float64
+	sz32                    float64
+	sz33                    float64
+	z1                      float64
+	z11                     float64
+	z12                     float64
+	z13                     float64
+	z2                      float64
+	z21                     float64
+	z22                     float64
+	z23                     float64
+	z3                      float64
+	z31                     float64
+	z32                     float64
+	z33                     float64
+}
+
+type dpperVars struct {
+	init                        rune    // read only
+	inclo                       float64 // read only
+	ep, inclp, nodep, argpp, mp float64
 }
 
 //Tle TLE record container
@@ -312,26 +321,41 @@ type Tle struct {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp float64, mp float64) {
+
+// inclm, satrec.init, satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
+// satrec.inclo, 'n', ep, xincp, nodep, argpp, mp,
+// double inclo, char init, double &ep, double &inclp, double &nodep, double &argpp, double &mp,
+func (s *elsetrec) dpper(vars *dpperVars) {
 	// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
 	// 	satrec.plo, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
 	// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
 	// 	satrec.sl4, satrec.t, satrec.xgh2, satrec.xgh3, satrec.xgh4, satrec.xh2,
 	// 	satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2, satrec.xl3, satrec.xl4,
-	// 	satrec.zmol, satrec.zmos, inclm, satrec.init, satrec.ecco, satrec.inclo,
-	// 	satrec.nodeo, satrec.argpo, satrec.mo, satrec.operationmode);
+	// 	satrec.zmol, satrec.zmos,
+	// satrec.operationmode);
+
+	// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco, satrec.plo,
+	// 	satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4, satrec.sh2, satrec.sh3,
+	// 	satrec.si2, satrec.si3, satrec.sl2, satrec.sl3, satrec.sl4, satrec.t, satrec.xgh2,
+	// 	satrec.xgh3, satrec.xgh4, satrec.xh2, satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2,
+	// 	satrec.xl3, satrec.xl4, satrec.zmol, satrec.zmos,
+	// satrec.operationmode);
 
 	// static void dpper(double e3, double ee2, double peo, double pgho, double pho, double pinco,
 	// 	double plo, double se2, double se3, double sgh2, double sgh3, double sgh4,
 	// 	double sh2, double sh3, double si2, double si3, double sl2, double sl3,
 	// 	double sl4, double t, double xgh2, double xgh3, double xgh4, double xh2,
 	// 	double xh3, double xi2, double xi3, double xl2, double xl3, double xl4,
-	// 	double zmol, double zmos, double inclo, char init, double &ep, double &inclp,
-	// 	double &nodep, double &argpp, double &mp, char opsmode) {
+	// 	double zmol, double zmos,
+	// char opsmode) {
 
 	// double alfdp, betdp, cosip, cosop, dalf, dbet, dls, f2, f3, pe, pgh, ph, pinc, pl, sel, ses,
 	// sghl, sghs, shll, shs, sil, sinip, sinop, sinzf, sis, sll, sls, xls, xnoh, zf, zm, zel, zes,
 	// znl, zns;
+
+	// inclm, satrec.init, satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
+	// satrec.inclo, 'n', ep, xincp, nodep, argpp, mp,
+	// double inclo, char init, double &ep, double &inclp, double &nodep, double &argpp, double &mp,
 
 	/* ---------------------- constants ----------------------------- */
 	const (
@@ -343,7 +367,7 @@ func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp floa
 	/* --------------- calculate time varying periodics ----------- */
 	zm := s.zmos + zns*s.t
 	// be sure that the initial call has time set to zero
-	if s.init == 'y' { // TODO: else..
+	if vars.init == 'y' { // TODO: else..
 		zm = s.zmos
 	}
 	zf := zm + 2.0*zes*math.Sin(zm)
@@ -356,7 +380,7 @@ func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp floa
 	sghs := s.sgh2*f2 + s.sgh3*f3 + s.sgh4*sinzf
 	shs := s.sh2*f2 + s.sh3*f3
 	zm = s.zmol + znl*s.t
-	if s.init == 'y' { // TODO: else..
+	if vars.init == 'y' { // TODO: else..
 		zm = s.zmol
 	}
 	zf = zm + 2.0*zel*math.Sin(zm)
@@ -374,16 +398,16 @@ func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp floa
 	pgh := sghs + sghl
 	ph := shs + shll
 
-	if s.init == 'n' {
+	if vars.init == 'n' {
 		pe = pe - s.peo
 		pinc = pinc - s.pinco
 		pl = pl - s.plo
 		pgh = pgh - s.pgho
 		ph = ph - s.pho
-		inclp = inclp + pinc
-		ep = ep + pe
-		sinip := math.Sin(inclp)
-		cosip := math.Cos(inclp)
+		vars.inclp += pinc
+		vars.ep += pe
+		sinip := math.Sin(vars.inclp)
+		cosip := math.Cos(vars.inclp)
 
 		/* ----------------- apply periodics directly ------------ */
 		//  sgp4fix for lyddane choice
@@ -394,50 +418,49 @@ func (s *elsetrec) dpper() (ep float64, inclp float64, nodep float64, argpp floa
 		//  use next line for original strn3 approach and original inclination
 		//  if (inclo >= 0.2)
 		//  use next line for gsfc version and perturbed inclination
-		if inclp >= 0.2 {
+		if vars.inclp >= 0.2 {
 			ph = ph / sinip
 			pgh = pgh - cosip*ph
-			argpp = argpp + pgh
-			nodep = nodep + ph
-			mp = mp + pl
+			vars.argpp += pgh
+			vars.nodep += ph
+			vars.mp += pl
 		} else {
 			/* ---- apply periodics with lyddane modification ---- */
-			sinop := math.Sin(nodep)
-			cosop := math.Cos(nodep)
+			sinop := math.Sin(vars.nodep)
+			cosop := math.Cos(vars.nodep)
 			alfdp := sinip * sinop
 			betdp := sinip * cosop
 			dalf := ph*cosop + pinc*cosip*sinop
 			dbet := -ph*sinop + pinc*cosip*cosop
 			alfdp = alfdp + dalf
 			betdp = betdp + dbet
-			nodep = math.Mod(nodep, TwoPi)
+			vars.nodep = math.Mod(vars.nodep, TwoPi)
 			//  sgp4fix for afspc written intrinsic functions
 			// nodep used without a trigonometric function ahead
-			if (nodep < 0.0) && (s.operationmode == 'a') {
-				nodep = nodep + TwoPi
+			if (vars.nodep < 0.0) && (s.operationmode == 'a') {
+				vars.nodep += TwoPi
 			}
-			xls := mp + argpp + cosip*nodep
-			dls := pl + pgh - pinc*nodep*sinip
+			xls := vars.mp + vars.argpp + cosip*vars.nodep
+			dls := pl + pgh - pinc*vars.nodep*sinip
 			xls = xls + dls
-			xnoh := nodep
-			nodep = math.Atan2(alfdp, betdp)
+			xnoh := vars.nodep
+			vars.nodep = math.Atan2(alfdp, betdp)
 			//  sgp4fix for afspc written intrinsic functions
 			// nodep used without a trigonometric function ahead
-			if (nodep < 0.0) && (s.operationmode == 'a') {
-				nodep = nodep + TwoPi
+			if (vars.nodep < 0.0) && (s.operationmode == 'a') {
+				vars.nodep += TwoPi
 			}
-			if math.Abs(xnoh-nodep) > math.Pi {
-				if nodep < xnoh {
-					nodep = nodep + TwoPi
+			if math.Abs(xnoh-vars.nodep) > math.Pi {
+				if vars.nodep < xnoh {
+					vars.nodep += TwoPi
 				} else {
-					nodep = nodep - TwoPi
+					vars.nodep -= TwoPi
 				}
 			}
-			mp = mp + pl
-			argpp = xls - mp - cosip*nodep
+			vars.mp += pl
+			vars.argpp = xls - vars.mp - cosip*vars.nodep
 		}
 	}
-	return
 }
 
 /*-----------------------------------------------------------------------------
@@ -912,39 +935,7 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
-	// static void dscom(double epoch, double ep, double argpp, double tc, double inclp, double nodep,
-	// 	double np, double &snodm, double &cnodm, double &sinim, double &cosim,
-	// 	double &sinomm, double &cosomm, double &day, double &e3, double &ee2, double &em,
-	// 	double &emsq, double &gam, double &peo, double &pgho, double &pho, double &pinco,
-	// 	double &plo, double &rtemsq, double &se2, double &se3, double &sgh2, double &sgh3,
-	// 	double &sgh4, double &sh2, double &sh3, double &si2, double &si3, double &sl2,
-	// 	double &sl3, double &sl4, double &s1, double &s2, double &s3, double &s4,
-	// 	double &s5, double &s6, double &s7, double &ss1, double &ss2, double &ss3,
-	// 	double &ss4, double &ss5, double &ss6, double &ss7, double &sz1, double &sz2,
-	// 	double &sz3, double &sz11, double &sz12, double &sz13, double &sz21, double &sz22,
-	// 	double &sz23, double &sz31, double &sz32, double &sz33, double &xgh2,
-	// 	double &xgh3, double &xgh4, double &xh2, double &xh3, double &xi2, double &xi3,
-	// 	double &xl2, double &xl3, double &xl4, double &nm, double &z1, double &z2,
-	// 	double &z3, double &z11, double &z12, double &z13, double &z21, double &z22,
-	// 	double &z23, double &z31, double &z32, double &z33, double &zmol, double &zmos) {
-
-	// dscom(epoch, satrec.ecco, satrec.argpo, tc, satrec.inclo, satrec.nodeo,
-	// 	satrec.no_unkozai, snodm, cnodm, sinim, cosim, sinomm, cosomm, day, satrec.e3,
-	// 	satrec.ee2, em, emsq, gam, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
-	// 	satrec.plo, rtemsq, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
-	// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
-	// 	satrec.sl4, s1, s2, s3, s4, s5, s6, s7, ss1, ss2, ss3, ss4, ss5, ss6, ss7, sz1,
-	// 	sz2, sz3, sz11, sz12, sz13, sz21, sz22, sz23, sz31, sz32, sz33, satrec.xgh2,
-	// 	satrec.xgh3, satrec.xgh4, satrec.xh2, satrec.xh3, satrec.xi2, satrec.xi3,
-	// 	satrec.xl2, satrec.xl3, satrec.xl4, nm, z1, z2, z3, z11, z12, z13, z21, z22, z23,
-	// 	z31, z32, z33, satrec.zmol, satrec.zmos);
-
-	// int lsflg;
-	// double a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, betasq, cc, ctem, stem, x1, x2, x3, x4, x5, x6,
-	// 	x7, x8, xnodce, xnoi, zcosg, zcosgl, zcosh, zcoshl, zcosi, zcosil, zsing, zsingl, zsinh,
-	// 	zsinhl, zsini, zsinil, zx, zy;
-
+func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -955,8 +946,6 @@ func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
 		zcosgs = 0.1945905
 		zsings = -0.98088458
 	)
-
-	var ds sgp4ds
 
 	ds.nm = s.noUnkozai
 	ds.em = s.ecco
@@ -1107,8 +1096,6 @@ func (s *elsetrec) dscom(epoch float64, tc float64) *sgp4ds {
 	s.xgh4 = -18.0 * ds.s4 * zel
 	s.xh2 = -2.0 * ds.s2 * ds.z22
 	s.xh3 = -2.0 * ds.s2 * (ds.z23 - ds.z21)
-
-	return &ds
 }
 
 /*-----------------------------------------------------------------------------
@@ -1217,7 +1204,17 @@ type dsinitVars struct {
 	xni   float64
 }
 
-func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float64, nodem float64, tc float64, xpidot float64) {
+func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
+	// dsinit(satrec.xke, cosim, emsq, satrec.argpo, s1, s2, s3, s4, s5, sinim, ss1, ss2, ss3,
+	// 	ss4, ss5, sz1, sz3, sz11, sz13, sz21, sz23, sz31, sz33, satrec.t, tc,
+	// 	satrec.gsto, satrec.mo, satrec.mdot, satrec.no_unkozai, satrec.nodeo,
+	// 	satrec.nodedot, xpidot, z1, z3, z11, z13, z21, z23, z31, z33, satrec.ecco, eccsq,
+	// 	em, argpm, inclm, mm, nm, nodem, satrec.irez, satrec.atime, satrec.d2201,
+	// 	satrec.d2211, satrec.d3210, satrec.d3222, satrec.d4410, satrec.d4422,
+	// 	satrec.d5220, satrec.d5232, satrec.d5421, satrec.d5433, satrec.dedt, satrec.didt,
+	// 	satrec.dmdt, dndt, satrec.dnodt, satrec.domdt, satrec.del1, satrec.del2,
+	// 	satrec.del3, satrec.xfact, satrec.xlamo, satrec.xli, satrec.xni);
+
 	// // sgp4fix just send in xke as a constant and eliminate getgravconst call
 	// // gravconsttype whichconst,
 	// double xke, double cosim, double emsq, double argpo, double s1, double s2, double s3, double s4,
@@ -1259,10 +1256,10 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 
 	/* -------------------- deep space initialization ------------ */
 	irez := 0 // TODO: unwrap if's
-	if (s.nm < 0.0052359877) && (s.nm > 0.0034906585) {
+	if (ds.nm < 0.0052359877) && (ds.nm > 0.0034906585) {
 		irez = 1
 	}
-	if (s.nm >= 8.26e-3) && (s.nm <= 9.24e-3) && (s.em >= 0.5) {
+	if (ds.nm >= 8.26e-3) && (ds.nm <= 9.24e-3) && (ds.em >= 0.5) {
 		irez = 2
 	}
 
@@ -1273,7 +1270,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 	sghs := ds.ss4 * zns * (ds.sz31 + ds.sz33 - 6.0)
 	shs := -zns * ds.ss2 * (ds.sz21 + ds.sz23)
 	// sgp4fix for 180 deg incl
-	if (inclm < 5.2359877e-2) || (inclm > math.Pi-5.2359877e-2) {
+	if (ds.inclm < 5.2359877e-2) || (ds.inclm > math.Pi-5.2359877e-2) {
 		shs = 0.0
 	}
 	if ds.sinim != 0.0 {
@@ -1288,7 +1285,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 	sghl := ds.s4 * znl * (ds.z31 + ds.z33 - 6.0)
 	shll := -znl * ds.s2 * (ds.z21 + ds.z23)
 	// sgp4fix for 180 deg incl
-	if (inclm < 5.2359877e-2) || (inclm > math.Pi-5.2359877e-2) {
+	if (ds.inclm < 5.2359877e-2) || (ds.inclm > math.Pi-5.2359877e-2) {
 		shll = 0.0
 	}
 	domdt := sgs + sghl
@@ -1301,11 +1298,11 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 	/* ----------- calculate deep space resonance effects -------- */
 	dndt := 0.0
 	theta := math.Mod(s.gsto+tc*rptim, TwoPi)
-	s.em = s.em + dedt*s.t
-	inclm = inclm + didt*s.t
-	argpm = argpm + domdt*s.t
-	nodem = nodem + dnodt*s.t
-	s.mm = s.mm + dmdt*s.t
+	ds.em += dedt * s.t
+	ds.inclm += didt * s.t
+	ds.argpm += domdt * s.t
+	ds.nodem += dnodt * s.t
+	ds.mm += dmdt * s.t
 	//   sgp4fix for negative inclinations
 	//   the following if statement should be commented out
 	// if (inclm < 0.0)
@@ -1317,47 +1314,47 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 
 	/* -------------- initialize the resonance terms ------------- */
 	if irez != 0 {
-		aonv = math.Pow(s.nm/s.xke, X2O3)
+		aonv = math.Pow(ds.nm/s.xke, X2O3)
 
 		/* ---------- geopotential resonance for 12 hour orbits ------ */
 		if irez == 2 {
 			cosisq := ds.cosim * ds.cosim
-			emo := s.em
-			em := s.ecco
+			emo := ds.em
+			ds.em = s.ecco
 			emsqo := ds.emsq
 			ds.emsq = iv.eccsq
-			eoc := s.em * ds.emsq
-			g201 := -0.306 - (s.em-0.64)*0.440
+			eoc := ds.em * ds.emsq
+			g201 := -0.306 - (ds.em-0.64)*0.440
 
 			var g211, g310, g322, g410, g422, g520, g521, g532, g533 float64
 
-			if em <= 0.65 {
-				g211 = 3.616 - 13.2470*em + 16.2900*ds.emsq
-				g310 = -19.302 + 117.3900*em - 228.4190*ds.emsq + 156.5910*eoc
-				g322 = -18.9068 + 109.7927*em - 214.6334*ds.emsq + 146.5816*eoc
-				g410 = -41.122 + 242.6940*em - 471.0940*ds.emsq + 313.9530*eoc
-				g422 = -146.407 + 841.8800*em - 1629.014*ds.emsq + 1083.4350*eoc
-				g520 = -532.114 + 3017.977*em - 5740.032*ds.emsq + 3708.2760*eoc
+			if ds.em <= 0.65 {
+				g211 = 3.616 - 13.2470*ds.em + 16.2900*ds.emsq
+				g310 = -19.302 + 117.3900*ds.em - 228.4190*ds.emsq + 156.5910*eoc
+				g322 = -18.9068 + 109.7927*ds.em - 214.6334*ds.emsq + 146.5816*eoc
+				g410 = -41.122 + 242.6940*ds.em - 471.0940*ds.emsq + 313.9530*eoc
+				g422 = -146.407 + 841.8800*ds.em - 1629.014*ds.emsq + 1083.4350*eoc
+				g520 = -532.114 + 3017.977*ds.em - 5740.032*ds.emsq + 3708.2760*eoc
 			} else {
-				g211 = -72.099 + 331.819*em - 508.738*ds.emsq + 266.724*eoc
-				g310 = -346.844 + 1582.851*em - 2415.925*ds.emsq + 1246.113*eoc
-				g322 = -342.585 + 1554.908*em - 2366.899*ds.emsq + 1215.972*eoc
-				g410 = -1052.797 + 4758.686*em - 7193.992*ds.emsq + 3651.957*eoc
-				g422 = -3581.690 + 16178.110*em - 24462.770*ds.emsq + 12422.520*eoc
-				if em > 0.715 {
-					g520 = -5149.66 + 29936.92*em - 54087.36*ds.emsq + 31324.56*eoc
+				g211 = -72.099 + 331.819*ds.em - 508.738*ds.emsq + 266.724*eoc
+				g310 = -346.844 + 1582.851*ds.em - 2415.925*ds.emsq + 1246.113*eoc
+				g322 = -342.585 + 1554.908*ds.em - 2366.899*ds.emsq + 1215.972*eoc
+				g410 = -1052.797 + 4758.686*ds.em - 7193.992*ds.emsq + 3651.957*eoc
+				g422 = -3581.690 + 16178.110*ds.em - 24462.770*ds.emsq + 12422.520*eoc
+				if ds.em > 0.715 {
+					g520 = -5149.66 + 29936.92*ds.em - 54087.36*ds.emsq + 31324.56*eoc
 				} else {
-					g520 = 1464.74 - 4664.75*em + 3763.64*ds.emsq
+					g520 = 1464.74 - 4664.75*ds.em + 3763.64*ds.emsq
 				}
 			}
-			if em < 0.7 {
-				g533 = -919.22770 + 4988.6100*em - 9064.7700*ds.emsq + 5542.21*eoc
-				g521 = -822.71072 + 4568.6173*em - 8491.4146*ds.emsq + 5337.524*eoc
-				g532 = -853.66600 + 4690.2500*em - 8624.7700*ds.emsq + 5341.4*eoc
+			if ds.em < 0.7 {
+				g533 = -919.22770 + 4988.6100*ds.em - 9064.7700*ds.emsq + 5542.21*eoc
+				g521 = -822.71072 + 4568.6173*ds.em - 8491.4146*ds.emsq + 5337.524*eoc
+				g532 = -853.66600 + 4690.2500*ds.em - 8624.7700*ds.emsq + 5341.4*eoc
 			} else {
-				g533 = -37995.780 + 161616.52*em - 229838.20*ds.emsq + 109377.94*eoc
-				g521 = -51752.104 + 218913.95*em - 309468.16*ds.emsq + 146349.42*eoc
-				g532 = -40023.880 + 170470.89*em - 242699.48*ds.emsq + 115605.82*eoc
+				g533 = -37995.780 + 161616.52*ds.em - 229838.20*ds.emsq + 109377.94*eoc
+				g521 = -51752.104 + 218913.95*ds.em - 309468.16*ds.emsq + 146349.42*eoc
+				g532 = -40023.880 + 170470.89*ds.em - 242699.48*ds.emsq + 115605.82*eoc
 			}
 
 			sini2 := ds.sinim * ds.sinim
@@ -1375,7 +1372,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 				(2.0 - 8.0*ds.cosim + cosisq*(-12.0+8.0*ds.cosim+10.0*cosisq))
 			f543 := 29.53125 * ds.sinim *
 				(-2.0 - 8.0*ds.cosim + cosisq*(12.0+8.0*ds.cosim-10.0*cosisq))
-			xno2 := s.nm * s.nm
+			xno2 := ds.nm * ds.nm
 			ainv2 := aonv * aonv
 			temp1 := 3.0 * xno2 * ainv2
 			temp := temp1 * root22
@@ -1398,7 +1395,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 			s.d5433 = temp * f543 * g533
 			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, TwoPi)
 			s.xfact = s.mdot + dmdt + 2.0*(s.nodedot+dnodt-rptim) - s.noUnkozai
-			em = emo
+			ds.em = emo
 			ds.emsq = emsqo
 		}
 
@@ -1411,7 +1408,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 			f311 := 0.9375*ds.sinim*ds.sinim*(1.0+3.0*ds.cosim) - 0.75*(1.0+ds.cosim)
 			f330 := 1.0 + ds.cosim
 			f330 = 1.875 * f330 * f330 * f330
-			s.del1 = 3.0 * s.nm * s.nm * aonv * aonv
+			s.del1 = 3.0 * ds.nm * ds.nm * aonv * aonv
 			s.del2 = 2.0 * s.del1 * f220 * g200 * q22
 			s.del3 = 3.0 * s.del1 * f330 * g300 * q33 * aonv
 			s.del1 = s.del1 * f311 * g310 * q31 * aonv
@@ -1423,7 +1420,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, inclm float64, argpm float6
 		s.xli = s.xlamo
 		s.xni = s.noUnkozai
 		s.atime = 0.0
-		s.nm = s.noUnkozai + dndt
+		ds.nm = s.noUnkozai + dndt
 	}
 	return
 }
@@ -1633,14 +1630,45 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			s.isimp = 1
 			tc := 0.0
 			inclm := s.inclo
-			ds := s.dscom(t.epoch, tc)
+			var ds sgp4ds
+			s.dscom(&ds, t.epoch, tc)
 
-			_, _, _, _, inclm = s.dpper()
+			var dpperVars dpperVars
+			dpperVars.init = s.init
+			dpperVars.inclo = inclm
+			dpperVars.ep = s.ecco
+			dpperVars.inclp = s.inclo
+			dpperVars.nodep = s.nodeo
+			dpperVars.argpp = s.argpo
+			dpperVars.mp = s.mo
 
-			argpm := 0.0
-			nodem := 0.0
-			// mm := 0.0 // TODO: !!!!
-			s.dsinit(ds, iv, inclm, argpm, nodem, tc, xpidot)
+			// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
+			// 	satrec.plo, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
+			// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
+			// 	satrec.sl4, satrec.t, satrec.xgh2, satrec.xgh3, satrec.xgh4, satrec.xh2,
+			// 	satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2, satrec.xl3, satrec.xl4,
+			// 	satrec.zmol, satrec.zmos, inclm, satrec.init, satrec.ecco, satrec.inclo,
+			// 	satrec.nodeo, satrec.argpo, satrec.mo, satrec.operationmode);
+
+			// static void dpper(double e3, double ee2, double peo, double pgho, double pho, double pinco,
+			// 	double plo, double se2, double se3, double sgh2, double sgh3, double sgh4,
+			// 	double sh2, double sh3, double si2, double si3, double sl2, double sl3,
+			// 	double sl4, double t, double xgh2, double xgh3, double xgh4, double xh2,
+			// 	double xh3, double xi2, double xi3, double xl2, double xl3, double xl4,
+			// 	double zmol, double zmos, double inclo, char init, double &ep, double &inclp,
+			// 	double &nodep, double &argpp, double &mp, char opsmode) {
+
+			s.dpper(&dpperVars)
+			s.ecco = dpperVars.ep
+			s.inclo = dpperVars.inclp
+			s.nodeo = dpperVars.nodep
+			s.argpo = dpperVars.argpp
+			s.mo = dpperVars.mp
+
+			ds.argpm = 0.0
+			ds.nodem = 0.0
+			ds.mm = 0.0
+			s.dsinit(&ds, iv, tc, xpidot)
 		}
 
 		/* ----------- set variables if not deep space ----------- */
@@ -1866,8 +1894,30 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	mp := dspaceVars.mm
 	sinip := sinim
 	cosip := cosim
+
+	var dpperVars dpperVars
+	dpperVars.init = 'n'
+	dpperVars.inclo = s.inclo
+	dpperVars.ep = ep
+	dpperVars.inclp = xincp
+	dpperVars.nodep = nodep
+	dpperVars.argpp = argpp
+	dpperVars.mp = mp
+
 	if s.method == 'd' {
-		ep, xincp, nodep, argpp, mp = s.dpper() // TODO 'n' !!!
+		// inclm, satrec.init, satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
+		// satrec.inclo, 'n', ep, xincp, nodep, argpp, mp,
+
+		// double inclo, char init, double &ep, double &inclp, double &nodep, double &argpp, double &mp,
+		// func (s *elsetrec) dpper(vars *dpperVars) {
+
+		s.dpper(&dpperVars)
+		ep = dpperVars.ep
+		xincp = dpperVars.inclp
+		nodep = dpperVars.nodep
+		argpp = dpperVars.argpp
+		mp = dpperVars.mp
+
 		// dpper(s.e3, s.ee2, s.peo, s.pgho, s.pho, s.pinco, s.plo,
 		// 	s.se2, s.se3, s.sgh2, s.sgh3, s.sgh4, s.sh2, s.sh3,
 		// 	s.si2, s.si3, s.sl2, s.sl3, s.sl4, s.t, s.xgh2,
