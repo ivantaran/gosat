@@ -177,6 +177,7 @@ type sgp4ds struct {
 	cosim                   float64
 	cosomm                  float64
 	day                     float64
+	dndt                    float64 // TODO remove this field
 	em                      float64
 	emsq                    float64
 	gam                     float64
@@ -762,7 +763,7 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 	)
 
 	/* ----------- calculate deep space resonance effects ----------- */
-	vars.dndt = 0.0
+	vars.dndt = 0.0 // TODO dndt dspaceVars and dssgp4
 	theta := math.Mod(s.gsto+vars.tc*rptim, TwoPi)
 	vars.em += s.dedt * s.t
 
@@ -955,7 +956,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	ds.cosomm = math.Cos(s.argpo)
 	ds.sinim = math.Sin(s.inclo)
 	ds.cosim = math.Cos(s.inclo)
-	ds.emsq = s.em * s.em
+	ds.emsq = ds.em * ds.em
 	betasq := 1.0 - ds.emsq
 	ds.rtemsq = math.Sqrt(betasq)
 
@@ -989,7 +990,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	zcosh := ds.cnodm
 	zsinh := ds.snodm
 	cc := c1ss
-	xnoi := 1.0 / s.nm
+	xnoi := 1.0 / ds.nm
 
 	for lsflg := 1; lsflg <= 2; lsflg++ {
 		a1 := zcosg*zcosh + zsing*zcosi*zsinh
@@ -1030,7 +1031,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 		ds.s3 = cc * xnoi
 		ds.s2 = -0.5 * ds.s3 / ds.rtemsq
 		ds.s4 = ds.s3 * ds.rtemsq
-		ds.s1 = -15.0 * s.em * ds.s4
+		ds.s1 = -15.0 * ds.em * ds.s4
 		ds.s5 = x1*x3 + x2*x4
 		ds.s6 = x2*x3 + x1*x4
 		ds.s7 = x2*x4 - x1*x3
@@ -1178,31 +1179,31 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-type dsinitVars struct {
-	d2201 float64
-	d2211 float64
-	d3210 float64
-	d3222 float64
-	d4410 float64
-	d4422 float64
-	d5220 float64
-	d5232 float64
-	d5421 float64
-	d5433 float64
-	dedt  float64
-	del1  float64
-	del2  float64
-	del3  float64
-	didt  float64
-	dmdt  float64
-	dndt  float64
-	dnodt float64
-	domdt float64
-	xfact float64
-	xlamo float64
-	xli   float64
-	xni   float64
-}
+// type dsinitVars struct {
+// 	d2201 float64
+// 	d2211 float64
+// 	d3210 float64
+// 	d3222 float64
+// 	d4410 float64
+// 	d4422 float64
+// 	d5220 float64
+// 	d5232 float64
+// 	d5421 float64
+// 	d5433 float64
+// 	dedt  float64
+// 	del1  float64
+// 	del2  float64
+// 	del3  float64
+// 	didt  float64
+// 	dmdt  float64
+// 	dndt  float64
+// 	dnodt float64
+// 	domdt float64
+// 	xfact float64
+// 	xlamo float64
+// 	xli   float64
+// 	xni   float64
+// }
 
 func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	// dsinit(satrec.xke, cosim, emsq, satrec.argpo, s1, s2, s3, s4, s5, sinim, ss1, ss2, ss3,
@@ -1279,30 +1280,30 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	sgs := sghs - ds.cosim*shs
 
 	/* ------------------------- do lunar terms ------------------ */
-	dedt := ses + ds.s1*znl*ds.s5
-	didt := sis + ds.s2*znl*(ds.z11+ds.z13)
-	dmdt := sls - znl*ds.s3*(ds.z1+ds.z3-14.0-6.0*ds.emsq)
+	s.dedt = ses + ds.s1*znl*ds.s5
+	s.didt = sis + ds.s2*znl*(ds.z11+ds.z13)
+	s.dmdt = sls - znl*ds.s3*(ds.z1+ds.z3-14.0-6.0*ds.emsq)
 	sghl := ds.s4 * znl * (ds.z31 + ds.z33 - 6.0)
 	shll := -znl * ds.s2 * (ds.z21 + ds.z23)
 	// sgp4fix for 180 deg incl
 	if (ds.inclm < 5.2359877e-2) || (ds.inclm > math.Pi-5.2359877e-2) {
 		shll = 0.0
 	}
-	domdt := sgs + sghl
-	dnodt := shs
+	s.domdt = sgs + sghl
+	s.dnodt = shs
 	if ds.sinim != 0.0 { // TODO: comparing float with zero
-		domdt = domdt - ds.cosim/ds.sinim*shll
-		dnodt = dnodt + shll/ds.sinim
+		s.domdt -= ds.cosim / ds.sinim * shll
+		s.dnodt += shll / ds.sinim
 	}
 
 	/* ----------- calculate deep space resonance effects -------- */
-	dndt := 0.0
+	ds.dndt = 0.0
 	theta := math.Mod(s.gsto+tc*rptim, TwoPi)
-	ds.em += dedt * s.t
-	ds.inclm += didt * s.t
-	ds.argpm += domdt * s.t
-	ds.nodem += dnodt * s.t
-	ds.mm += dmdt * s.t
+	ds.em += s.dedt * s.t
+	ds.inclm += s.didt * s.t
+	ds.argpm += s.domdt * s.t
+	ds.nodem += s.dnodt * s.t
+	ds.mm += s.dmdt * s.t
 	//   sgp4fix for negative inclinations
 	//   the following if statement should be commented out
 	// if (inclm < 0.0)
@@ -1394,7 +1395,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 			s.d5421 = temp * f542 * g521
 			s.d5433 = temp * f543 * g533
 			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, TwoPi)
-			s.xfact = s.mdot + dmdt + 2.0*(s.nodedot+dnodt-rptim) - s.noUnkozai
+			s.xfact = s.mdot + s.dmdt + 2.0*(s.nodedot+s.dnodt-rptim) - s.noUnkozai
 			ds.em = emo
 			ds.emsq = emsqo
 		}
@@ -1413,16 +1414,15 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 			s.del3 = 3.0 * s.del1 * f330 * g300 * q33 * aonv
 			s.del1 = s.del1 * f311 * g310 * q31 * aonv
 			s.xlamo = math.Mod(s.mo+s.nodeo+s.argpo-theta, TwoPi)
-			s.xfact = s.mdot + xpidot - rptim + dmdt + domdt + dnodt - s.noUnkozai
+			s.xfact = s.mdot + xpidot - rptim + s.dmdt + s.domdt + s.dnodt - s.noUnkozai
 		}
 
 		/* ------------ for sgp4, initialize the integrator ---------- */
 		s.xli = s.xlamo
 		s.xni = s.noUnkozai
 		s.atime = 0.0
-		ds.nm = s.noUnkozai + dndt
+		ds.nm = s.noUnkozai + ds.dndt
 	}
-	return
 }
 
 func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
@@ -1536,6 +1536,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	s.em = 0.0
 	s.im = 0.0
 	s.Om = 0.0
+	s.om = 0.0
 	s.mm = 0.0
 	s.nm = 0.0
 
@@ -1629,13 +1630,13 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			s.method = 'd'
 			s.isimp = 1
 			tc := 0.0
-			inclm := s.inclo
 			var ds sgp4ds
+			ds.inclm = s.inclo
 			s.dscom(&ds, t.epoch, tc)
 
 			var dpperVars dpperVars
 			dpperVars.init = s.init
-			dpperVars.inclo = inclm
+			dpperVars.inclo = ds.inclm
 			dpperVars.ep = s.ecco
 			dpperVars.inclp = s.inclo
 			dpperVars.nodep = s.nodeo
