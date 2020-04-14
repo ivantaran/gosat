@@ -3,7 +3,9 @@ package gosat
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -31,7 +33,11 @@ func loadRefTest(fileName string) (testMap, error) {
 			if err != nil {
 				return nil, err
 			}
-			testMap[id] = make(coordLineMap)
+			if testMap[id] == nil {
+				testMap[id] = make(coordLineMap)
+			}
+		} else if len(fields) > 20 {
+			fmt.Println("last long line test")
 		} else if len(fields) >= 7 {
 			time, err := strconv.ParseFloat(fields[0], 64)
 			if err != nil {
@@ -69,7 +75,7 @@ func TestTleLoad(t *testing.T) {
 		t.Error(err)
 	} else {
 		for _, tleItem := range tleList {
-			if tleItem.satn == 33334 {
+			if tleItem.satn == 9880 {
 				fmt.Println("OLOLO")
 			}
 			err = sat.sgp4init("wgs84", tleItem, 'i')
@@ -111,6 +117,8 @@ func TestTleLoad(t *testing.T) {
 
 func TestReference(t *testing.T) {
 	var r [6]float64
+	gravConst := "wgs72"
+	treshold := 1.0e-6
 
 	testMap, err := loadRefTest("reftest.out")
 	if err != nil {
@@ -124,11 +132,33 @@ func TestReference(t *testing.T) {
 		t.Error(err)
 	} else {
 		for _, tleItem := range tleList {
-			err = sat.sgp4init("wgs84", tleItem, 'i')
+			// err = sat.sgp4init("wgs84", tleItem, 'i')
+			err = sat.sgp4init(gravConst, tleItem, 'i')
 			if coordLineMap, ok := testMap[sat.satnum]; ok {
-				for time, coord := range coordLineMap {
+				times := make([]float64, 0.0, len(coordLineMap))
+				for time := range coordLineMap {
+					times = append(times, time)
+				}
+				sort.Float64s(times)
+				for _, time := range times {
+					coord := coordLineMap[time]
 					sat.sgp4(time, r[0:3], r[3:])
-					fmt.Printf("%d %f %f %f\n", sat.satnum, time, coord[0], r[0])
+					ok := true
+					for i := 0; i < len(r); i++ {
+						delta := coord[i] - r[i]
+						if math.Abs(delta) > treshold {
+							ok = false
+							break
+						}
+					}
+					if !ok {
+						fmt.Printf("satnum:%d time:%0.1f\n", sat.satnum, time)
+						for i := 0; i < len(r); i++ {
+							fmt.Printf("\t%+0.4e %+0.4e %+0.4e\n", coord[i], r[i], coord[i]-r[i])
+						}
+						// t.Fatal()
+						t.Error()
+					}
 				}
 			}
 		}

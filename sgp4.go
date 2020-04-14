@@ -1256,12 +1256,12 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
 
 	/* -------------------- deep space initialization ------------ */
-	irez := 0 // TODO: unwrap if's
+	s.irez = 0 // TODO: unwrap if's
 	if (ds.nm < 0.0052359877) && (ds.nm > 0.0034906585) {
-		irez = 1
+		s.irez = 1
 	}
 	if (ds.nm >= 8.26e-3) && (ds.nm <= 9.24e-3) && (ds.em >= 0.5) {
-		irez = 2
+		s.irez = 2
 	}
 
 	/* ------------------------ do solar terms ------------------- */
@@ -1314,11 +1314,11 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	//  }
 
 	/* -------------- initialize the resonance terms ------------- */
-	if irez != 0 {
+	if s.irez != 0 {
 		aonv = math.Pow(ds.nm/s.xke, X2O3)
 
 		/* ---------- geopotential resonance for 12 hour orbits ------ */
-		if irez == 2 {
+		if s.irez == 2 {
 			cosisq := ds.cosim * ds.cosim
 			emo := ds.em
 			ds.em = s.ecco
@@ -1401,7 +1401,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 		}
 
 		/* ---------------- synchronous resonance terms -------------- */
-		if irez == 1 {
+		if s.irez == 1 {
 			g200 := 1.0 + ds.emsq*(-2.5+0.8125*ds.emsq)
 			g310 := 1.0 + 2.0*ds.emsq
 			g300 := 1.0 + ds.emsq*(-6.0+6.60937*ds.emsq)
@@ -1692,6 +1692,8 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	err := s.sgp4(0.0, r[0:3], r[3:])
 
 	s.init = 'n'
+
+	err = s.sgp4(2880.0, r[0:3], r[3:])
 
 	return err
 }
