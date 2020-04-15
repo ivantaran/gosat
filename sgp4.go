@@ -1693,8 +1693,6 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 
 	s.init = 'n'
 
-	err = s.sgp4(2880.0, r[0:3], r[3:])
-
 	return err
 }
 

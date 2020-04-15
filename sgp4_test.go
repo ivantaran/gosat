@@ -75,9 +75,9 @@ func TestTleLoad(t *testing.T) {
 		t.Error(err)
 	} else {
 		for _, tleItem := range tleList {
-			if tleItem.satn == 9880 {
-				fmt.Println("OLOLO")
-			}
+			// if tleItem.satn == 23599 {
+			// 	fmt.Println("OLOLO")
+			// }
 			err = sat.sgp4init("wgs84", tleItem, 'i')
 			switch sat.satnum {
 			case 33333:
@@ -118,13 +118,17 @@ func TestTleLoad(t *testing.T) {
 func TestReference(t *testing.T) {
 	var r [6]float64
 	gravConst := "wgs72"
-	treshold := 1.0e-6
+	treshold := 1.0e-8
+	testFileName := "java_sgp4_ver.out"
+	// testFileName := "reftest.out"
+	testMap, err := loadRefTest(testFileName)
 
-	testMap, err := loadRefTest("reftest.out")
 	if err != nil {
 		t.Error(err)
 	} else {
-		fmt.Println(len(testMap))
+		if len(testMap) != 32 {
+			t.Errorf("len(testMap): %d != 32\n", len(testMap))
+		}
 	}
 	var sat elsetrec
 	tleList, err := LoadTle("SGP4-VER.TLE")
