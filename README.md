@@ -1,3 +1,4 @@
-# gosat - sgp4 backend for satviewer
+# gosat
+sgp4 backend for satviewer
 
-![](https://github.com/ivantaran/gosat/workflows/go/badge.svg)
+![](https://github.com/ivantaran/gosat/workflows/Go/badge.svg)
