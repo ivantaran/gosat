@@ -9,6 +9,29 @@ import (
 	"strings"
 )
 
+//Tle TLE record container
+type Tle struct {
+	class   byte
+	cs1     int
+	cs2     int
+	design  string
+	elsetn  int
+	ephtype int
+	epoch   float64
+	revn    int
+	satn    int // catalog number
+	title   string
+	xargpo  float64
+	xbstar  float64
+	xecco   float64
+	xinclo  float64
+	xmo     float64
+	xnddot  float64
+	xndot   float64
+	xno     float64 // mean motion
+	xnodeo  float64
+}
+
 func days2mdhms(year int, days float64) (
 	mon int, day int, hr int, minute int, sec float64) {
 

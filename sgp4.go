@@ -12,13 +12,17 @@ const (
 )
 
 type elsetrec struct {
-	satnum        int
-	epochyr       int
-	epochtynumrev int
+	class         rune
+	design        string
+	elnum         int
+	ephtype       int
 	error         int
-	operationmode rune
 	isInit        bool
 	method        rune
+	operationmode rune
+	revnum        int
+	satnum        int
+	title         string
 
 	/* Near Earth */
 	isDeepSpace bool
@@ -106,29 +110,20 @@ type elsetrec struct {
 	xli   float64
 	xni   float64
 	/*  */
-	a           float64
-	altp        float64
-	alta        float64
-	epochdays   float64
-	jdsatepoch  float64
-	jdsatepochF float64
-	nddot       float64
-	ndot        float64
-	bstar       float64
-	rcse        float64
-	inclo       float64
-	nodeo       float64
-	ecco        float64
-	argpo       float64
-	mo          float64
-	noKozai     float64
+	a       float64
+	altp    float64
+	alta    float64
+	nddot   float64
+	ndot    float64
+	bstar   float64
+	rcse    float64
+	inclo   float64
+	nodeo   float64
+	ecco    float64
+	argpo   float64
+	mo      float64
+	noKozai float64
 
-	// sgp4fix add new variables from tle
-	classification rune
-	intldesg       string // TODO: length must be 11
-	ephtype        int
-	elnum          int
-	revnum         int
 	// sgp4fix add unkozai'd variable
 	noUnkozai float64
 	// sgp4fix add singly averaged variables
@@ -234,29 +229,6 @@ type dpperVars struct {
 	isInit                      bool    // read only
 	inclo                       float64 // read only
 	ep, inclp, nodep, argpp, mp float64
-}
-
-//Tle TLE record container
-type Tle struct {
-	class   byte
-	cs1     int
-	cs2     int
-	design  string
-	elsetn  int
-	ephtype int
-	epoch   float64
-	revn    int
-	satn    int // catalog number
-	title   string
-	xargpo  float64
-	xbstar  float64
-	xecco   float64
-	xinclo  float64
-	xmo     float64
-	xnddot  float64
-	xndot   float64
-	xno     float64 // mean motion
-	xnodeo  float64
 }
 
 /* -----------------------------------------------------------------------------
@@ -1125,8 +1097,10 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 
 	s.error = 0
 	s.operationmode = opsmode
-	s.satnum = t.satn
 
+	s.satnum = t.satn
+	s.design = t.design
+	s.title = t.title
 	s.bstar = t.xbstar
 	s.ndot = t.xndot
 	s.nddot = t.xnddot
