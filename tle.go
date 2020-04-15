@@ -60,7 +60,7 @@ func jday(year int, days float64) (jd float64, jdFrac float64) {
 
 // LoadTle load TLE data
 func LoadTle(fileName string) ([]*Tle, error) {
-	const xpdotp = 1440.0 / TwoPi
+	const xpdotp = 1440.0 / twoPi
 
 	file, err := os.Open(fileName)
 
@@ -120,10 +120,10 @@ func LoadTle(fileName string) ([]*Tle, error) {
 				t.revn, err = strconv.Atoi(strings.TrimSpace(line[63:68]))
 				t.cs2, err = strconv.Atoi(line[68:69])
 
-				t.xinclo *= Deg2Rad
-				t.xnodeo *= Deg2Rad
-				t.xargpo *= Deg2Rad
-				t.xmo *= Deg2Rad
+				t.xinclo *= deg2rad
+				t.xnodeo *= deg2rad
+				t.xargpo *= deg2rad
+				t.xmo *= deg2rad
 				t.xno /= xpdotp
 
 				lineSecondOk = true

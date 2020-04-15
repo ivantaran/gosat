@@ -5,15 +5,14 @@ import (
 	"math"
 )
 
-//Constants
 const (
-	TwoPi   = math.Pi * 2.0
-	Deg2Rad = math.Pi / 180.0
-	X2O3    = 2.0 / 3.0
+	twoPi   = math.Pi * 2.0
+	deg2rad = math.Pi / 180.0
+	x2o3    = 2.0 / 3.0
 )
 
 type elsetrec struct {
-	satnum        int // TODO: long int originally
+	satnum        int
 	epochyr       int
 	epochtynumrev int
 	error         int
@@ -128,8 +127,8 @@ type elsetrec struct {
 	classification rune
 	intldesg       string // TODO: length must be 11
 	ephtype        int
-	elnum          int // TODO: long originally
-	revnum         int // TODO: long originally
+	elnum          int
+	revnum         int
 	// sgp4fix add unkozai'd variable
 	noUnkozai float64
 	// sgp4fix add singly averaged variables
@@ -177,7 +176,6 @@ type sgp4ds struct {
 	cosim                   float64
 	cosomm                  float64
 	day                     float64
-	dndt                    float64 // TODO remove this field
 	em                      float64
 	emsq                    float64
 	gam                     float64
@@ -233,6 +231,16 @@ type dpperVars struct {
 	ep, inclp, nodep, argpp, mp float64
 }
 
+type dspaceVars struct {
+	tc,
+	argpm,
+	em,
+	inclm,
+	mm,
+	nm,
+	nodem float64
+}
+
 //Tle TLE record container
 type Tle struct {
 	class   byte
@@ -267,110 +275,26 @@ type Tle struct {
 *
 *  author        : david vallado                  719-573-2600   28 jun 2005
 *
-*  inputs        :
-*    e3          -
-*    ee2         -
-*    peo         -
-*    pgho        -
-*    pho         -
-*    pinco       -
-*    plo         -
-*    se2 , se3 , sgh2, sgh3, sgh4, sh2, sh3, si2, si3, sl2, sl3, sl4 -
-*    t           -
-*    xh2, xh3, xi2, xi3, xl2, xl3, xl4 -
-*    zmol        -
-*    zmos        -
-*    ep          - eccentricity                           0.0 - 1.0
-*    inclo       - inclination - needed for lyddane modification
-*    nodep       - right ascension of ascending node
-*    argpp       - argument of perigee
-*    mp          - mean anomaly
-*
-*  outputs       :
-*    ep          - eccentricity                           0.0 - 1.0
-*    inclp       - inclination
-*    nodep        - right ascension of ascending node
-*    argpp       - argument of perigee
-*    mp          - mean anomaly
-*
-*  locals        :
-*    alfdp       -
-*    betdp       -
-*    cosip  , sinip  , cosop  , sinop  ,
-*    dalf        -
-*    dbet        -
-*    dls         -
-*    f2, f3      -
-*    pe          -
-*    pgh         -
-*    ph          -
-*    pinc        -
-*    pl          -
-*    sel   , ses   , sghl  , sghs  , shl   , shs   , sil   , sinzf , sis   ,
-*    sll   , sls
-*    xls         -
-*    xnoh        -
-*    zf          -
-*    zm          -
-*
-*  coupling      :
-*    none.
-*
 *  references    :
 *    hoots, roehrich, norad spacetrack report #3 1980
 *    hoots, norad spacetrack report #6 1986
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-
-// inclm, satrec.init, satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
-// satrec.inclo, 'n', ep, xincp, nodep, argpp, mp,
-// double inclo, char init, double &ep, double &inclp, double &nodep, double &argpp, double &mp,
 func (s *elsetrec) dpper(vars *dpperVars) {
-	// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
-	// 	satrec.plo, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
-	// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
-	// 	satrec.sl4, satrec.t, satrec.xgh2, satrec.xgh3, satrec.xgh4, satrec.xh2,
-	// 	satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2, satrec.xl3, satrec.xl4,
-	// 	satrec.zmol, satrec.zmos,
-	// satrec.operationmode);
-
-	// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco, satrec.plo,
-	// 	satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4, satrec.sh2, satrec.sh3,
-	// 	satrec.si2, satrec.si3, satrec.sl2, satrec.sl3, satrec.sl4, satrec.t, satrec.xgh2,
-	// 	satrec.xgh3, satrec.xgh4, satrec.xh2, satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2,
-	// 	satrec.xl3, satrec.xl4, satrec.zmol, satrec.zmos,
-	// satrec.operationmode);
-
-	// static void dpper(double e3, double ee2, double peo, double pgho, double pho, double pinco,
-	// 	double plo, double se2, double se3, double sgh2, double sgh3, double sgh4,
-	// 	double sh2, double sh3, double si2, double si3, double sl2, double sl3,
-	// 	double sl4, double t, double xgh2, double xgh3, double xgh4, double xh2,
-	// 	double xh3, double xi2, double xi3, double xl2, double xl3, double xl4,
-	// 	double zmol, double zmos,
-	// char opsmode) {
-
-	// double alfdp, betdp, cosip, cosop, dalf, dbet, dls, f2, f3, pe, pgh, ph, pinc, pl, sel, ses,
-	// sghl, sghs, shll, shs, sil, sinip, sinop, sinzf, sis, sll, sls, xls, xnoh, zf, zm, zel, zes,
-	// znl, zns;
-
-	// inclm, satrec.init, satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
-	// satrec.inclo, 'n', ep, xincp, nodep, argpp, mp,
-	// double inclo, char init, double &ep, double &inclp, double &nodep, double &argpp, double &mp,
-
-	/* ---------------------- constants ----------------------------- */
 	const (
 		zns = 1.19459e-5
 		zes = 0.01675
 		znl = 1.5835218e-4
 		zel = 0.05490
 	)
+
 	/* --------------- calculate time varying periodics ----------- */
-	zm := s.zmos + zns*s.t
-	// be sure that the initial call has time set to zero
-	if vars.isInit { // TODO: else..
-		zm = s.zmos
+	zm := s.zmos
+	if !vars.isInit {
+		zm += zns * s.t
 	}
+
 	zf := zm + 2.0*zes*math.Sin(zm)
 	sinzf := math.Sin(zf)
 	f2 := 0.5*sinzf*sinzf - 0.25
@@ -380,10 +304,11 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 	sls := s.sl2*f2 + s.sl3*f3 + s.sl4*sinzf
 	sghs := s.sgh2*f2 + s.sgh3*f3 + s.sgh4*sinzf
 	shs := s.sh2*f2 + s.sh3*f3
-	zm = s.zmol + znl*s.t
-	if vars.isInit { // TODO: else..
-		zm = s.zmol
+	zm = s.zmol
+	if !vars.isInit {
+		zm += znl * s.t
 	}
+
 	zf = zm + 2.0*zel*math.Sin(zm)
 	sinzf = math.Sin(zf)
 	f2 = 0.5*sinzf*sinzf - 0.25
@@ -400,11 +325,11 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 	ph := shs + shll
 
 	if !vars.isInit {
-		pe = pe - s.peo
-		pinc = pinc - s.pinco
-		pl = pl - s.plo
-		pgh = pgh - s.pgho
-		ph = ph - s.pho
+		pe -= s.peo
+		pinc -= s.pinco
+		pl -= s.plo
+		pgh -= s.pgho
+		ph -= s.pho
 		vars.inclp += pinc
 		vars.ep += pe
 		sinip := math.Sin(vars.inclp)
@@ -420,8 +345,8 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 		//  if (inclo >= 0.2)
 		//  use next line for gsfc version and perturbed inclination
 		if vars.inclp >= 0.2 {
-			ph = ph / sinip
-			pgh = pgh - cosip*ph
+			ph /= sinip
+			pgh -= cosip * ph
 			vars.argpp += pgh
 			vars.nodep += ph
 			vars.mp += pl
@@ -433,29 +358,29 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 			betdp := sinip * cosop
 			dalf := ph*cosop + pinc*cosip*sinop
 			dbet := -ph*sinop + pinc*cosip*cosop
-			alfdp = alfdp + dalf
-			betdp = betdp + dbet
-			vars.nodep = math.Mod(vars.nodep, TwoPi)
+			alfdp += dalf
+			betdp += dbet
+			vars.nodep = math.Mod(vars.nodep, twoPi)
 			//  sgp4fix for afspc written intrinsic functions
 			// nodep used without a trigonometric function ahead
 			if (vars.nodep < 0.0) && (s.operationmode == 'a') {
-				vars.nodep += TwoPi
+				vars.nodep += twoPi
 			}
 			xls := vars.mp + vars.argpp + cosip*vars.nodep
 			dls := pl + pgh - pinc*vars.nodep*sinip
-			xls = xls + dls
+			xls += dls
 			xnoh := vars.nodep
 			vars.nodep = math.Atan2(alfdp, betdp)
 			//  sgp4fix for afspc written intrinsic functions
 			// nodep used without a trigonometric function ahead
 			if (vars.nodep < 0.0) && (s.operationmode == 'a') {
-				vars.nodep += TwoPi
+				vars.nodep += twoPi
 			}
 			if math.Abs(xnoh-vars.nodep) > math.Pi {
 				if vars.nodep < xnoh {
-					vars.nodep += TwoPi
+					vars.nodep += twoPi
 				} else {
-					vars.nodep -= TwoPi
+					vars.nodep -= twoPi
 				}
 			}
 			vars.mp += pl
@@ -473,50 +398,12 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 *
 *  author        : david vallado                  719-573-2600   28 jun 2005
 *
-*  inputs        :
-*    satn        - satellite number - not needed, placed in satrec
-*    xke         - reciprocal of tumin
-*    j2          - j2 zonal harmonic
-*    ecco        - eccentricity                           0.0 - 1.0
-*    epoch       - epoch time in days from jan 0, 1950. 0 hr
-*    inclo       - inclination of satellite
-*    no          - mean motion of satellite
-*
-*  outputs       :
-*    ainv        - 1.0 / a
-*    ao          - semi major axis
-*    con41       -
-*    con42       - 1.0 - 5.0 cos(i)
-*    cosio       - cosine of inclination
-*    cosio2      - cosio squared
-*    eccsq       - eccentricity squared
-*    method      - flag for deep space                    'd', 'n'
-*    omeosq      - 1.0 - ecco * ecco
-*    posq        - semi-parameter squared
-*    rp          - radius of perigee
-*    rteosq      - square root of (1.0 - ecco*ecco)
-*    sinio       - sine of inclination
-*    gsto        - gst at time of observation               rad
-*    no          - mean motion of satellite
-*
-*  locals        :
-*    ak          -
-*    d1          -
-*    del         -
-*    adel        -
-*    po          -
-*
-*  coupling      :
-*    getgravconst- no longer used
-*    gstime      - find greenwich sidereal time from the julian date
-*
 *  references    :
 *    hoots, roehrich, norad spacetrack report #3 1980
 *    hoots, norad spacetrack report #6 1986
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-
 func (s *elsetrec) initl(epoch float64) *initlVars {
 	var v initlVars
 	/* ------------- calculate auxillary epoch quantities ---------- */
@@ -527,14 +414,14 @@ func (s *elsetrec) initl(epoch float64) *initlVars {
 	v.cosio2 = v.cosio * v.cosio
 
 	/* ------------------ un-kozai the mean motion ----------------- */
-	ak := math.Pow(s.xke/s.noKozai, X2O3)
+	ak := math.Pow(s.xke/s.noKozai, x2o3)
 	d1 := 0.75 * s.j2 * (3.0*v.cosio2 - 1.0) / (v.rteosq * v.omeosq)
 	del := d1 / (ak * ak)
 	adel := ak * (1.0 - del*del - del*(1.0/3.0+134.0*del*del/81.0))
 	del = d1 / (adel * adel)
 	s.noUnkozai = s.noKozai / (1.0 + del)
 
-	v.ao = math.Pow(s.xke/s.noUnkozai, X2O3)
+	v.ao = math.Pow(s.xke/s.noUnkozai, x2o3)
 	v.sinio = math.Sin(s.inclo)
 	po := v.ao * v.omeosq
 	v.con42 = 1.0 - 5.0*v.cosio2
@@ -551,27 +438,32 @@ func (s *elsetrec) initl(epoch float64) *initlVars {
 	c1 := 1.72027916940703639e-2
 	thgr70 := 1.7321343856509374
 	fk5r := 5.07551419432269442e-15
-	c1p2p := c1 + TwoPi
-	gsto1 := math.Mod(thgr70+c1*ds70+c1p2p*tfrac+ts70*ts70*fk5r, TwoPi)
+	c1p2p := c1 + twoPi
+	gsto1 := math.Mod(thgr70+c1*ds70+c1p2p*tfrac+ts70*ts70*fk5r, twoPi)
 	if gsto1 < 0.0 {
-		gsto1 = gsto1 + TwoPi
+		gsto1 = gsto1 + twoPi
 	}
 	s.gsto = gstime(epoch + 2433281.5)
 
 	return &v
 }
 
+/*
+*
+* gstime - find greenwich sidereal time from the julian date
+*
+ */
 func gstime(jdut1 float64) float64 {
 
 	tut1 := (jdut1 - 2451545.0) / 36525.0
 	temp := -6.2e-6*tut1*tut1*tut1 +
 		0.093104*tut1*tut1 +
 		(876600.0*3600+8640184.812866)*tut1 + 67310.54841 // seconds
-	temp = math.Mod(temp*Deg2Rad/240.0, TwoPi) //360/86400 = 1/240, to deg, to rad
+	temp = math.Mod(temp*deg2rad/240.0, twoPi) //360/86400 = 1/240, to deg, to rad
 
 	// ------------------------ check quadrants ---------------------
 	if temp < 0.0 {
-		temp += TwoPi
+		temp += twoPi
 	}
 
 	return temp
@@ -586,27 +478,10 @@ func gstime(jdut1 float64) float64 {
 *
 *  author        : david vallado                  719-573-2600   21 jul 2006
 *
-*  inputs        :
-*    whichconst  - which set of constants to use  wgs72old, wgs72, wgs84
-*
-*  outputs       :
-*    tumin       - minutes in one time unit
-*    mu          - earth gravitational parameter
-*    radiusearthkm - radius of the earth in km
-*    xke         - reciprocal of tumin
-*    j2, j3, j4  - un-normalized zonal harmonic values
-*    j3oj2       - j3 divided by j2
-*
-*  locals        :
-*
-*  coupling      :
-*    none
-*
 *  references    :
 *    norad spacetrack report #3
 *    vallado, crawford, hujsak, kelso  2006
 --------------------------------------------------------------------------- */
-
 func (s *elsetrec) getgravconst(whichconst string) {
 	switch whichconst {
 	// -- wgs-72 low precision str#3 constants --
@@ -656,97 +531,13 @@ func (s *elsetrec) getgravconst(whichconst string) {
 *
 *  author        : david vallado                  719-573-2600   28 jun 2005
 *
-*  inputs        :
-*    d2201, d2211, d3210, d3222, d4410, d4422, d5220, d5232, d5421, d5433 -
-*    dedt        -
-*    del1, del2, del3  -
-*    didt        -
-*    dmdt        -
-*    dnodt       -
-*    domdt       -
-*    irez        - flag for resonance           0-none, 1-one day, 2-half day
-*    argpo       - argument of perigee
-*    argpdot     - argument of perigee dot (rate)
-*    t           - time
-*    tc          -
-*    gsto        - gst
-*    xfact       -
-*    xlamo       -
-*    no          - mean motion
-*    atime       -
-*    em          - eccentricity
-*    ft          -
-*    argpm       - argument of perigee
-*    inclm       - inclination
-*    xli         -
-*    mm          - mean anomaly
-*    xni         - mean motion
-*    nodem       - right ascension of ascending node
-*
-*  outputs       :
-*    atime       -
-*    em          - eccentricity
-*    argpm       - argument of perigee
-*    inclm       - inclination
-*    xli         -
-*    mm          - mean anomaly
-*    xni         -
-*    nodem       - right ascension of ascending node
-*    dndt        -
-*    nm          - mean motion
-*
-*  locals        :
-*    delt        -
-*    ft          -
-*    theta       -
-*    x2li        -
-*    x2omi       -
-*    xl          -
-*    xldot       -
-*    xnddt       -
-*    xndt        -
-*    xomi        -
-*
-*  coupling      :
-*    none        -
-*
 *  references    :
 *    hoots, roehrich, norad spacetrack report #3 1980
 *    hoots, norad spacetrack report #6 1986
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-type dspaceVars struct {
-	tc,
-	argpm,
-	dndt,
-	em,
-	inclm,
-	mm,
-	nm,
-	nodem float64
-}
-
 func (vars *dspaceVars) dspace(s *elsetrec) {
-	// (
-	// 	int irez, double d2201, double d2211, double d3210, double d3222, double d4410,
-	// 	double d4422, double d5220, double d5232, double d5421, double d5433,
-	// 	double dedt, double del1, double del2, double del3, double didt, double dmdt,
-	// 	double dnodt, double domdt, double argpo, double argpdot, double t, double tc,
-	// 	double gsto, double xfact, double xlamo, double no, double &atime, double &em,
-	// 	double &argpm, double &inclm, double &xli, double &mm, double &xni,
-	// 	double &nodem, double &dndt, double &nm) {
-	// int iretn, iret;
-	// double delt, ft, theta, x2li, x2omi, xl, xldot, xnddt, xndt, xomi, g22, g32, g44, g52, g54,
-	// fasx2, fasx4, fasx6, rptim, step2, stepn, stepp;
-
-	// s.dspace(s.irez, s.d2201, s.d2211, s.d3210, s.d3222, s.d4410,
-	// 	s.d4422, s.d5220, s.d5232, s.d5421, s.d5433, s.dedt,
-	// 	s.del1, s.del2, s.del3, s.didt, s.dmdt, s.dnodt,
-	// 	s.domdt, s.argpo, s.argpdot, s.t, tc, s.gsto, s.xfact,
-	// 	s.xlamo, s.noUnkozai, s.atime, em, argpm, inclm, s.xli, mm,
-	// 	s.xni, nodem, dndt, nm)
-
 	const (
 		fasx2 = 0.13130908
 		fasx4 = 2.8843198
@@ -763,8 +554,7 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 	)
 
 	/* ----------- calculate deep space resonance effects ----------- */
-	vars.dndt = 0.0 // TODO dndt dspaceVars and dssgp4
-	theta := math.Mod(s.gsto+vars.tc*rptim, TwoPi)
+	theta := math.Mod(s.gsto+vars.tc*rptim, twoPi)
 	vars.em += s.dedt * s.t
 
 	vars.inclm += s.didt * s.t
@@ -793,7 +583,7 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 		// sgp4fix streamline check
 		if (s.atime == 0.0) || (s.t*s.atime <= 0.0) || (math.Abs(s.t) < math.Abs(s.atime)) {
 			s.atime = 0.0
-			s.xni = s.noUnkozai // TODO !!!??
+			s.xni = s.noUnkozai
 			s.xli = s.xlamo
 		}
 		// sgp4fix move check outside loop
@@ -860,12 +650,11 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 		xl := s.xli + xldot*ft + xndt*ft*ft*0.5
 		if s.irez != 1 {
 			vars.mm = xl - 2.0*vars.nodem + 2.0*theta
-			vars.dndt = vars.nm - s.noUnkozai
 		} else {
 			vars.mm = xl - vars.nodem - vars.argpm + theta
-			vars.dndt = vars.nm - s.noUnkozai
 		}
-		vars.nm = s.noUnkozai + vars.dndt
+		dndt := vars.nm - s.noUnkozai
+		vars.nm = s.noUnkozai + dndt
 	}
 }
 
@@ -878,57 +667,6 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 *    used to be called dpper, but the functions inside weren't well organized.
 *
 *  author        : david vallado                  719-573-2600   28 jun 2005
-*
-*  inputs        :
-*    epoch       -
-*    ep          - eccentricity
-*    argpp       - argument of perigee
-*    tc          -
-*    inclp       - inclination
-*    nodep       - right ascension of ascending node
-*    np          - mean motion
-*
-*  outputs       :
-*    sinim  , cosim  , sinomm , cosomm , snodm  , cnodm
-*    day         -
-*    e3          -
-*    ee2         -
-*    em          - eccentricity
-*    emsq        - eccentricity squared
-*    gam         -
-*    peo         -
-*    pgho        -
-*    pho         -
-*    pinco       -
-*    plo         -
-*    rtemsq      -
-*    se2, se3         -
-*    sgh2, sgh3, sgh4        -
-*    sh2, sh3, si2, si3, sl2, sl3, sl4         -
-*    s1, s2, s3, s4, s5, s6, s7          -
-*    ss1, ss2, ss3, ss4, ss5, ss6, ss7, sz1, sz2, sz3         -
-*    sz11, sz12, sz13, sz21, sz22, sz23, sz31, sz32, sz33        -
-*    xgh2, xgh3, xgh4, xh2, xh3, xi2, xi3, xl2, xl3, xl4         -
-*    nm          - mean motion
-*    z1, z2, z3, z11, z12, z13, z21, z22, z23, z31, z32, z33         -
-*    zmol        -
-*    zmos        -
-*
-*  locals        :
-*    a1, a2, a3, a4, a5, a6, a7, a8, a9, a10         -
-*    betasq      -
-*    cc          -
-*    ctem, stem        -
-*    x1, x2, x3, x4, x5, x6, x7, x8          -
-*    xnodce      -
-*    xnoi        -
-*    zcosg  , zsing  , zcosgl , zsingl , zcosh  , zsinh  , zcoshl , zsinhl ,
-*    zcosi  , zsini  , zcosil , zsinil ,
-*    zx          -
-*    zy          -
-*
-*  coupling      :
-*    none.
 *
 *  references    :
 *    hoots, roehrich, norad spacetrack report #3 1980
@@ -967,7 +705,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	s.pgho = 0.0
 	s.pho = 0.0
 	ds.day = epoch + 18261.5 + tc/1440.0 //TODO remove day from struct, it's local variable
-	xnodce := math.Mod(4.5236020-9.2422029e-4*ds.day, TwoPi)
+	xnodce := math.Mod(4.5236020-9.2422029e-4*ds.day, twoPi)
 	stem := math.Sin(xnodce)
 	ctem := math.Cos(xnodce)
 	zcosil := 0.91375164 - 0.03568096*ctem
@@ -978,7 +716,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	zx := 0.39785416 * stem / zsinil
 	zy := zcoshl*ctem + 0.91744867*zsinhl*stem
 	zx = math.Atan2(zx, zy)
-	zx = ds.gam + zx - xnodce
+	zx += ds.gam - xnodce
 	zcosgl := math.Cos(zx)
 	zsingl := math.Sin(zx)
 
@@ -1067,8 +805,8 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 		}
 	}
 
-	s.zmol = math.Mod(4.7199672+0.22997150*ds.day-ds.gam, TwoPi)
-	s.zmos = math.Mod(6.2565837+0.017201977*ds.day, TwoPi)
+	s.zmol = math.Mod(4.7199672+0.22997150*ds.day-ds.gam, twoPi)
+	s.zmos = math.Mod(6.2565837+0.017201977*ds.day, twoPi)
 
 	/* ------------------------ do solar terms ---------------------- */
 	s.se2 = 2.0 * ds.ss1 * ds.ss6
@@ -1108,136 +846,13 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 *
 *  author        : david vallado                  719-573-2600   28 jun 2005
 *
-*  inputs        :
-*    xke         - reciprocal of tumin
-*    cosim, sinim-
-*    emsq        - eccentricity squared
-*    argpo       - argument of perigee
-*    s1, s2, s3, s4, s5      -
-*    ss1, ss2, ss3, ss4, ss5 -
-*    sz1, sz3, sz11, sz13, sz21, sz23, sz31, sz33 -
-*    t           - time
-*    tc          -
-*    gsto        - greenwich sidereal time                   rad
-*    mo          - mean anomaly
-*    mdot        - mean anomaly dot (rate)
-*    no          - mean motion
-*    nodeo       - right ascension of ascending node
-*    nodedot     - right ascension of ascending node dot (rate)
-*    xpidot      -
-*    z1, z3, z11, z13, z21, z23, z31, z33 -
-*    eccm        - eccentricity
-*    argpm       - argument of perigee
-*    inclm       - inclination
-*    mm          - mean anomaly
-*    xn          - mean motion
-*    nodem       - right ascension of ascending node
-*
-*  outputs       :
-*    em          - eccentricity
-*    argpm       - argument of perigee
-*    inclm       - inclination
-*    mm          - mean anomaly
-*    nm          - mean motion
-*    nodem       - right ascension of ascending node
-*    irez        - flag for resonance           0-none, 1-one day, 2-half day
-*    atime       -
-*    d2201, d2211, d3210, d3222, d4410, d4422, d5220, d5232, d5421, d5433    -
-*    dedt        -
-*    didt        -
-*    dmdt        -
-*    dndt        -
-*    dnodt       -
-*    domdt       -
-*    del1, del2, del3        -
-*    ses  , sghl , sghs , sgs  , shl  , shs  , sis  , sls
-*    theta       -
-*    xfact       -
-*    xlamo       -
-*    xli         -
-*    xni
-*
-*  locals        :
-*    ainv2       -
-*    aonv        -
-*    cosisq      -
-*    eoc         -
-*    f220, f221, f311, f321, f322, f330, f441, f442, f522, f523, f542, f543  -
-*    g200, g201, g211, g300, g310, g322, g410, g422, g520, g521, g532, g533  -
-*    sini2       -
-*    temp        -
-*    temp1       -
-*    theta       -
-*    xno2        -
-*
-*  coupling      :
-*    getgravconst- no longer used
-*
 *  references    :
 *    hoots, roehrich, norad spacetrack report #3 1980
 *    hoots, norad spacetrack report #6 1986
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-// type dsinitVars struct {
-// 	d2201 float64
-// 	d2211 float64
-// 	d3210 float64
-// 	d3222 float64
-// 	d4410 float64
-// 	d4422 float64
-// 	d5220 float64
-// 	d5232 float64
-// 	d5421 float64
-// 	d5433 float64
-// 	dedt  float64
-// 	del1  float64
-// 	del2  float64
-// 	del3  float64
-// 	didt  float64
-// 	dmdt  float64
-// 	dndt  float64
-// 	dnodt float64
-// 	domdt float64
-// 	xfact float64
-// 	xlamo float64
-// 	xli   float64
-// 	xni   float64
-// }
-
 func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
-	// dsinit(satrec.xke, cosim, emsq, satrec.argpo, s1, s2, s3, s4, s5, sinim, ss1, ss2, ss3,
-	// 	ss4, ss5, sz1, sz3, sz11, sz13, sz21, sz23, sz31, sz33, satrec.t, tc,
-	// 	satrec.gsto, satrec.mo, satrec.mdot, satrec.no_unkozai, satrec.nodeo,
-	// 	satrec.nodedot, xpidot, z1, z3, z11, z13, z21, z23, z31, z33, satrec.ecco, eccsq,
-	// 	em, argpm, inclm, mm, nm, nodem, satrec.irez, satrec.atime, satrec.d2201,
-	// 	satrec.d2211, satrec.d3210, satrec.d3222, satrec.d4410, satrec.d4422,
-	// 	satrec.d5220, satrec.d5232, satrec.d5421, satrec.d5433, satrec.dedt, satrec.didt,
-	// 	satrec.dmdt, dndt, satrec.dnodt, satrec.domdt, satrec.del1, satrec.del2,
-	// 	satrec.del3, satrec.xfact, satrec.xlamo, satrec.xli, satrec.xni);
-
-	// // sgp4fix just send in xke as a constant and eliminate getgravconst call
-	// // gravconsttype whichconst,
-	// double xke, double cosim, double emsq, double argpo, double s1, double s2, double s3, double s4,
-	// double s5, double sinim, double ss1, double ss2, double ss3, double ss4, double ss5, double sz1,
-	// double sz3, double sz11, double sz13, double sz21, double sz23, double sz31, double sz33,
-	// double t, double tc, double gsto, double mo, double mdot, double no, double nodeo,
-	// double nodedot, double xpidot, double z1, double z3, double z11, double z13, double z21,
-	// double z23, double z31, double z33, double ecco, double eccsq, double &em, double &argpm,
-	// double &inclm, double &mm, double &nm, double &nodem, int &irez, double &atime, double &d2201,
-	// double &d2211, double &d3210, double &d3222, double &d4410, double &d4422, double &d5220,
-	// double &d5232, double &d5421, double &d5433, double &dedt, double &didt, double &dmdt,
-	// double &dndt, double &dnodt, double &domdt, double &del1, double &del2, double &del3,
-	// double &xfact, double &xlamo, double &xli, double &xni) {
-	/* --------------------- local variables ------------------------ */
-
-	// double ainv2, aonv = 0.0, cosisq, eoc, f220, f221, f311, f321, f322, f330, f441, f442, f522,
-	//               f523, f542, f543, g200, g201, g211, g300, g310, g322, g410, g422, g520, g521,
-	//               g532, g533, ses, sgs, sghl, sghs, shs, shll, sis, sini2, sls, temp, temp1, theta,
-	//               xno2, q22, q31, q33, root22, root44, root54, rptim, root32, root52, x2o3, znl,
-	//               emo, zns, emsqo;
-
-	aonv := 0.0
 	const (
 		q22    = 1.7891679e-6
 		q31    = 2.1460748e-6
@@ -1251,17 +866,16 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 		znl    = 1.5835218e-4
 		zns    = 1.19459e-5
 	)
-	// sgp4fix identify constants and allow alternate values
-	// just xke is used here so pass it in rather than have multiple calls
-	// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
+
+	aonv := 0.0
 
 	/* -------------------- deep space initialization ------------ */
-	s.irez = 0 // TODO: unwrap if's
-	if (ds.nm < 0.0052359877) && (ds.nm > 0.0034906585) {
-		s.irez = 1
-	}
 	if (ds.nm >= 8.26e-3) && (ds.nm <= 9.24e-3) && (ds.em >= 0.5) {
 		s.irez = 2
+	} else if (ds.nm < 0.0052359877) && (ds.nm > 0.0034906585) {
+		s.irez = 1
+	} else {
+		s.irez = 0
 	}
 
 	/* ------------------------ do solar terms ------------------- */
@@ -1274,7 +888,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	if (ds.inclm < 5.2359877e-2) || (ds.inclm > math.Pi-5.2359877e-2) {
 		shs = 0.0
 	}
-	if ds.sinim != 0.0 {
+	if ds.sinim != 0.0 { // TODO: comparing a floating point number with zero
 		shs = shs / ds.sinim
 	}
 	sgs := sghs - ds.cosim*shs
@@ -1291,14 +905,13 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	}
 	s.domdt = sgs + sghl
 	s.dnodt = shs
-	if ds.sinim != 0.0 { // TODO: comparing float with zero
+	if ds.sinim != 0.0 { // TODO: comparing a floating point number with zero
 		s.domdt -= ds.cosim / ds.sinim * shll
 		s.dnodt += shll / ds.sinim
 	}
 
 	/* ----------- calculate deep space resonance effects -------- */
-	ds.dndt = 0.0
-	theta := math.Mod(s.gsto+tc*rptim, TwoPi)
+	theta := math.Mod(s.gsto+tc*rptim, twoPi)
 	ds.em += s.dedt * s.t
 	ds.inclm += s.didt * s.t
 	ds.argpm += s.domdt * s.t
@@ -1315,7 +928,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 
 	/* -------------- initialize the resonance terms ------------- */
 	if s.irez != 0 {
-		aonv = math.Pow(ds.nm/s.xke, X2O3)
+		aonv = math.Pow(ds.nm/s.xke, x2o3)
 
 		/* ---------- geopotential resonance for 12 hour orbits ------ */
 		if s.irez == 2 {
@@ -1394,7 +1007,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 			temp = 2.0 * temp1 * root54
 			s.d5421 = temp * f542 * g521
 			s.d5433 = temp * f543 * g533
-			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, TwoPi)
+			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, twoPi)
 			s.xfact = s.mdot + s.dmdt + 2.0*(s.nodedot+s.dnodt-rptim) - s.noUnkozai
 			ds.em = emo
 			ds.emsq = emsqo
@@ -1413,7 +1026,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 			s.del2 = 2.0 * s.del1 * f220 * g200 * q22
 			s.del3 = 3.0 * s.del1 * f330 * g300 * q33 * aonv
 			s.del1 = s.del1 * f311 * g310 * q31 * aonv
-			s.xlamo = math.Mod(s.mo+s.nodeo+s.argpo-theta, TwoPi)
+			s.xlamo = math.Mod(s.mo+s.nodeo+s.argpo-theta, twoPi)
 			s.xfact = s.mdot + xpidot - rptim + s.dmdt + s.domdt + s.dnodt - s.noUnkozai
 		}
 
@@ -1421,7 +1034,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 		s.xli = s.xlamo
 		s.xni = s.noUnkozai
 		s.atime = 0.0
-		ds.nm = s.noUnkozai + ds.dndt
+		ds.nm = s.noUnkozai
 	}
 }
 
@@ -1541,23 +1154,25 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	s.nm = 0.0
 
 	ss := 78.0/s.radiusearthkm + 1.0
-	qzms2ttemp := (120.0 - 78.0) / s.radiusearthkm
-	qzms2t := qzms2ttemp * qzms2ttemp * qzms2ttemp * qzms2ttemp
+	qzms2t := (120.0 - 78.0) / s.radiusearthkm
+	qzms2t *= qzms2t
+	qzms2t *= qzms2t // pow 4
 
 	s.isInit = true
 	s.t = 0.0
 
 	iv := s.initl(t.epoch)
 
-	s.a = math.Pow(s.noUnkozai*s.tumin, -X2O3)
+	s.a = math.Pow(s.noUnkozai*s.tumin, -x2o3)
 	s.alta = s.a*(1.0+s.ecco) - 1.0
 	s.altp = s.a*(1.0-s.ecco) - 1.0
 	s.error = 0
 
 	if (iv.omeosq >= 0.0) || (s.noUnkozai >= 0.0) {
-		s.isDeepSpace = false
 		if iv.rp < (220.0/s.radiusearthkm + 1.0) {
 			s.isDeepSpace = true
+		} else {
+			s.isDeepSpace = false
 		}
 		sfour := ss
 		qzms24 := qzms2t
@@ -1574,13 +1189,13 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			sfour = sfour/s.radiusearthkm + 1.0
 		}
 		pinvsq := 1.0 / iv.posq
-
 		tsi := 1.0 / (iv.ao - sfour)
 		s.eta = iv.ao * s.ecco * tsi
 		etasq := s.eta * s.eta
 		eeta := s.ecco * s.eta
 		psisq := math.Abs(1.0 - etasq)
-		coef := qzms24 * math.Pow(tsi, 4.0)
+		tsisq := tsi * tsi
+		coef := qzms24 * tsisq * tsisq
 		coef1 := coef / math.Pow(psisq, 3.5)
 		cc2 := coef1 * s.noUnkozai * (iv.ao*(1.0+1.5*etasq+eeta*(4.0+etasq)) +
 			0.375*s.j2*tsi/psisq*s.con41*(8.0+3.0*etasq*(8.0+etasq)))
@@ -1607,9 +1222,10 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 		s.nodedot = xhdot1 + (0.5*temp2*(4.0-19.0*iv.cosio2)+2.0*temp3*(3.0-7.0*iv.cosio2))*iv.cosio
 		xpidot := s.argpdot + s.nodedot
 		s.omgcof = s.bstar * cc3 * math.Cos(s.argpo)
-		s.xmcof = 0.0
 		if s.ecco > 1.0e-4 {
-			s.xmcof = -X2O3 * coef * s.bstar / eeta
+			s.xmcof = -x2o3 * coef * s.bstar / eeta
+		} else {
+			s.xmcof = 0.0
 		}
 		s.nodecf = 3.5 * iv.omeosq * xhdot1 * s.cc1
 		s.t2cof = 1.5 * s.cc1
@@ -1626,7 +1242,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 		s.x7thm1 = 7.0*iv.cosio2 - 1.0
 
 		/* --------------- deep space initialization ------------- */
-		if (TwoPi / s.noUnkozai) >= 225.0 {
+		if (twoPi / s.noUnkozai) >= 225.0 {
 			s.method = 'd'
 			s.isDeepSpace = true
 			tc := 0.0
@@ -1642,22 +1258,6 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			dpperVars.nodep = s.nodeo
 			dpperVars.argpp = s.argpo
 			dpperVars.mp = s.mo
-
-			// dpper(satrec.e3, satrec.ee2, satrec.peo, satrec.pgho, satrec.pho, satrec.pinco,
-			// 	satrec.plo, satrec.se2, satrec.se3, satrec.sgh2, satrec.sgh3, satrec.sgh4,
-			// 	satrec.sh2, satrec.sh3, satrec.si2, satrec.si3, satrec.sl2, satrec.sl3,
-			// 	satrec.sl4, satrec.t, satrec.xgh2, satrec.xgh3, satrec.xgh4, satrec.xh2,
-			// 	satrec.xh3, satrec.xi2, satrec.xi3, satrec.xl2, satrec.xl3, satrec.xl4,
-			// 	satrec.zmol, satrec.zmos, inclm, satrec.init, satrec.ecco, satrec.inclo,
-			// 	satrec.nodeo, satrec.argpo, satrec.mo, satrec.operationmode);
-
-			// static void dpper(double e3, double ee2, double peo, double pgho, double pho, double pinco,
-			// 	double plo, double se2, double se3, double sgh2, double sgh3, double sgh4,
-			// 	double sh2, double sh3, double si2, double si3, double sl2, double sl3,
-			// 	double sl4, double t, double xgh2, double xgh3, double xgh4, double xh2,
-			// 	double xh3, double xi2, double xi3, double xl2, double xl3, double xl4,
-			// 	double zmol, double zmos, double inclo, char init, double &ep, double &inclp,
-			// 	double &nodep, double &argpp, double &mp, char opsmode) {
 
 			s.dpper(&dpperVars)
 			s.ecco = dpperVars.ep
@@ -1723,59 +1323,6 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 *                   5 - epoch elements are sub-orbital
 *                   6 - satellite has decayed
 *
-*  locals        :
-*    am          -
-*    axnl, aynl        -
-*    betal       -
-*    cosim   , sinim   , cosomm  , sinomm  , cnod    , snod    , cos2u   ,
-*    sin2u   , coseo1  , sineo1  , cosi    , sini    , cosip   , sinip   ,
-*    cosisq  , cossu   , sinsu   , cosu    , sinu
-*    delm        -
-*    delomg      -
-*    dndt        -
-*    eccm        -
-*    emsq        -
-*    ecose       -
-*    el2         -
-*    eo1         -
-*    eccp        -
-*    esine       -
-*    argpm       -
-*    argpp       -
-*    omgadf      -c
-*    pl          -
-*    r           -
-*    rtemsq      -
-*    rdotl       -
-*    rl          -
-*    rvdot       -
-*    rvdotl      -
-*    su          -
-*    t2  , t3   , t4    , tc
-*    tem5, temp , temp1 , temp2  , tempa  , tempe  , templ
-*    u   , ux   , uy    , uz     , vx     , vy     , vz
-*    inclm       - inclination
-*    mm          - mean anomaly
-*    nm          - mean motion
-*    nodem       - right asc of ascending node
-*    xinc        -
-*    xincp       -
-*    xl          -
-*    xlm         -
-*    mp          -
-*    xmdf        -
-*    xmx         -
-*    xmy         -
-*    nodedf      -
-*    xnode       -
-*    nodep       -
-*    np          -
-*
-*  coupling      :
-*    getgravconst- no longer used. Variables are conatined within satrec
-*    dpper
-*    dpspace
-*
 *  references    :
 *    hoots, roehrich, norad spacetrack report #3 1980
 *    hoots, norad spacetrack report #6 1986
@@ -1784,15 +1331,6 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 ----------------------------------------------------------------------------*/
 
 func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
-
-	// double am, axnl, aynl, betal, cosim, cnod, cos2u, coseo1, cosi, cosip, cosisq, cossu, cosu,
-	//     delm, delomg, em, emsq, ecose, el2, eo1, ep, esine, argpm, argpp, argpdf, pl,
-	//     mrt = 0.0, mvt, rdotl, rl, rvdot, rvdotl, sinim, sin2u, sineo1, sini, sinip, sinsu, sinu,
-	//     snod, su, t2, t3, t4, tem5, temp, temp1, temp2, tempa, tempe, templ, u, ux, uy, uz, vx, vy,
-	//     vz, inclm, mm, nm, nodem, xinc, xincp, xl, xlm, mp, xmdf, xmx, xmy, nodedf, xnode, nodep,
-	//     tc, dndt, twopi, x2o3, vkmpersec, delmtemp;
-	// int ktr;
-
 	/* ------------------ set mathematical constants --------------- */
 	// sgp4fix divisor for divide by zero check on inclination
 	// the old check used 1.0 + cos(pi-1.0e-9), but then compared it to
@@ -1800,9 +1338,6 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	const temp4 = 1.5e-12
 
 	var dspaceVars dspaceVars
-
-	// sgp4fix identify constants and allow alternate values
-	// getgravconst( whichconst, tumin, mu, radiusearthkm, xke, j2, j3, j4, j3oj2 );
 	vkmpersec := s.radiusearthkm * s.xke / 60.0
 
 	/* --------------------- clear sgp4 error flag ----------------- */
@@ -1831,9 +1366,9 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		dspaceVars.argpm = argpdf - temp
 		t3 := t2 * s.t
 		t4 := t3 * s.t
-		tempa = tempa - s.d2*t2 - s.d3*t3 - s.d4*t4
-		tempe = tempe + s.bstar*s.cc5*(math.Sin(dspaceVars.mm)-s.sinmao)
-		templ = templ + s.t3cof*t3 + t4*(s.t4cof+s.t*s.t5cof)
+		tempa -= s.d2*t2 + s.d3*t3 + s.d4*t4
+		tempe += s.bstar * s.cc5 * (math.Sin(dspaceVars.mm) - s.sinmao)
+		templ += s.t3cof*t3 + t4*(s.t4cof+s.t*s.t5cof)
 	}
 
 	dspaceVars.nm = s.noUnkozai
@@ -1849,7 +1384,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		// sgp4fix add return
 		return errors.New("nm <= 0.0")
 	}
-	am := math.Pow(s.xke/dspaceVars.nm, X2O3) * tempa * tempa
+	am := math.Pow(s.xke/dspaceVars.nm, x2o3) * tempa * tempa
 	dspaceVars.nm = s.xke / math.Pow(am, 1.5)
 	dspaceVars.em -= tempe
 
@@ -1869,10 +1404,10 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	emsq := dspaceVars.em * dspaceVars.em
 	temp := 1.0 - emsq
 
-	dspaceVars.nodem = math.Mod(dspaceVars.nodem, TwoPi)
-	dspaceVars.argpm = math.Mod(dspaceVars.argpm, TwoPi)
-	xlm = math.Mod(xlm, TwoPi)
-	dspaceVars.mm = math.Mod(xlm-dspaceVars.argpm-dspaceVars.nodem, TwoPi)
+	dspaceVars.nodem = math.Mod(dspaceVars.nodem, twoPi)
+	dspaceVars.argpm = math.Mod(dspaceVars.argpm, twoPi)
+	xlm = math.Mod(xlm, twoPi)
+	dspaceVars.mm = math.Mod(xlm-dspaceVars.argpm-dspaceVars.nodem, twoPi)
 
 	// sgp4fix recover singly averaged mean elements
 	s.am = am
@@ -1906,12 +1441,6 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	dpperVars.mp = mp
 
 	if s.method == 'd' {
-		// inclm, satrec.init, satrec.ecco, satrec.inclo, satrec.nodeo, satrec.argpo, satrec.mo,
-		// satrec.inclo, 'n', ep, xincp, nodep, argpp, mp,
-
-		// double inclo, char init, double &ep, double &inclp, double &nodep, double &argpp, double &mp,
-		// func (s *elsetrec) dpper(vars *dpperVars) {
-
 		s.dpper(&dpperVars)
 		ep = dpperVars.ep
 		xincp = dpperVars.inclp
@@ -1919,12 +1448,6 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		argpp = dpperVars.argpp
 		mp = dpperVars.mp
 
-		// dpper(s.e3, s.ee2, s.peo, s.pgho, s.pho, s.pinco, s.plo,
-		// 	s.se2, s.se3, s.sgh2, s.sgh3, s.sgh4, s.sh2, s.sh3,
-		// 	s.si2, s.si3, s.sl2, s.sl3, s.sl4, s.t, s.xgh2,
-		// 	s.xgh3, s.xgh4, s.xh2, s.xh3, s.xi2, s.xi3, s.xl2,
-		// 	s.xl3, s.xl4, s.zmol, s.zmos, s.inclo, 'n', ep, xincp, nodep,
-		// 	argpp, mp, s.operationmode)
 		if xincp < 0.0 {
 			xincp = -xincp
 			nodep = nodep + math.Pi
@@ -1955,7 +1478,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	xl := mp + argpp + nodep + temp*s.xlcof*axnl
 
 	/* --------------------- solve kepler's equation --------------- */
-	u := math.Mod(xl-nodep, TwoPi)
+	u := math.Mod(xl-nodep, twoPi)
 	eo1 := u
 	tem5 := 9999.9
 	ktr := 1
@@ -2034,9 +1557,9 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	vz := sini * cossu
 
 	/* --------- position and velocity (in km and km/sec) ---------- */
-	r[0] = (mrt * ux) * s.radiusearthkm
-	r[1] = (mrt * uy) * s.radiusearthkm
-	r[2] = (mrt * uz) * s.radiusearthkm
+	r[0] = mrt * ux * s.radiusearthkm
+	r[1] = mrt * uy * s.radiusearthkm
+	r[2] = mrt * uz * s.radiusearthkm
 	v[0] = (mvt*ux + rvdot*vx) * vkmpersec
 	v[1] = (mvt*uy + rvdot*vy) * vkmpersec
 	v[2] = (mvt*uz + rvdot*vz) * vkmpersec
