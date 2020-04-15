@@ -18,36 +18,36 @@ type elsetrec struct {
 	epochtynumrev int
 	error         int
 	operationmode rune
-	init          rune
+	isInit        bool
 	method        rune
 
 	/* Near Earth */
-	isimp   int // TODO: is bool?
-	aycof   float64
-	con41   float64
-	cc1     float64
-	cc4     float64
-	cc5     float64
-	d2      float64
-	d3      float64
-	d4      float64
-	delmo   float64
-	eta     float64
-	argpdot float64
-	omgcof  float64
-	sinmao  float64
-	t       float64
-	t2cof   float64
-	t3cof   float64
-	t4cof   float64
-	t5cof   float64
-	x1mth2  float64
-	x7thm1  float64
-	mdot    float64
-	nodedot float64
-	xlcof   float64
-	xmcof   float64
-	nodecf  float64
+	isDeepSpace bool
+	aycof       float64
+	con41       float64
+	cc1         float64
+	cc4         float64
+	cc5         float64
+	d2          float64
+	d3          float64
+	d4          float64
+	delmo       float64
+	eta         float64
+	argpdot     float64
+	omgcof      float64
+	sinmao      float64
+	t           float64
+	t2cof       float64
+	t3cof       float64
+	t4cof       float64
+	t5cof       float64
+	x1mth2      float64
+	x7thm1      float64
+	mdot        float64
+	nodedot     float64
+	xlcof       float64
+	xmcof       float64
+	nodecf      float64
 
 	/* Deep Space */
 	irez  int
@@ -228,7 +228,7 @@ type sgp4ds struct {
 }
 
 type dpperVars struct {
-	init                        rune    // read only
+	isInit                      bool    // read only
 	inclo                       float64 // read only
 	ep, inclp, nodep, argpp, mp float64
 }
@@ -368,7 +368,7 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 	/* --------------- calculate time varying periodics ----------- */
 	zm := s.zmos + zns*s.t
 	// be sure that the initial call has time set to zero
-	if vars.init == 'y' { // TODO: else..
+	if vars.isInit { // TODO: else..
 		zm = s.zmos
 	}
 	zf := zm + 2.0*zes*math.Sin(zm)
@@ -381,7 +381,7 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 	sghs := s.sgh2*f2 + s.sgh3*f3 + s.sgh4*sinzf
 	shs := s.sh2*f2 + s.sh3*f3
 	zm = s.zmol + znl*s.t
-	if vars.init == 'y' { // TODO: else..
+	if vars.isInit { // TODO: else..
 		zm = s.zmol
 	}
 	zf = zm + 2.0*zel*math.Sin(zm)
@@ -399,7 +399,7 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 	pgh := sghs + sghl
 	ph := shs + shll
 
-	if vars.init == 'n' {
+	if !vars.isInit {
 		pe = pe - s.peo
 		pinc = pinc - s.pinco
 		pl = pl - s.plo
@@ -1429,7 +1429,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	const temp4 = 1.5e-12
 
 	/* ----------- set all near earth variables to zero ------------ */
-	s.isimp = 0
+	s.isDeepSpace = false
 	s.method = 'n'
 	s.aycof = 0.0
 	s.con41 = 0.0
@@ -1544,7 +1544,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	qzms2ttemp := (120.0 - 78.0) / s.radiusearthkm
 	qzms2t := qzms2ttemp * qzms2ttemp * qzms2ttemp * qzms2ttemp
 
-	s.init = 'y'
+	s.isInit = true
 	s.t = 0.0
 
 	iv := s.initl(t.epoch)
@@ -1555,9 +1555,9 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	s.error = 0
 
 	if (iv.omeosq >= 0.0) || (s.noUnkozai >= 0.0) {
-		s.isimp = 0
+		s.isDeepSpace = false
 		if iv.rp < (220.0/s.radiusearthkm + 1.0) {
-			s.isimp = 1
+			s.isDeepSpace = true
 		}
 		sfour := ss
 		qzms24 := qzms2t
@@ -1628,14 +1628,14 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 		/* --------------- deep space initialization ------------- */
 		if (TwoPi / s.noUnkozai) >= 225.0 {
 			s.method = 'd'
-			s.isimp = 1
+			s.isDeepSpace = true
 			tc := 0.0
 			var ds sgp4ds
 			ds.inclm = s.inclo
 			s.dscom(&ds, t.epoch, tc)
 
 			var dpperVars dpperVars
-			dpperVars.init = s.init
+			dpperVars.isInit = s.isInit
 			dpperVars.inclo = ds.inclm
 			dpperVars.ep = s.ecco
 			dpperVars.inclp = s.inclo
@@ -1673,7 +1673,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 		}
 
 		/* ----------- set variables if not deep space ----------- */
-		if s.isimp != 1 {
+		if !s.isDeepSpace {
 			cc1sq := s.cc1 * s.cc1
 			s.d2 = 4.0 * iv.ao * tsi * cc1sq
 			temp := s.d2 * tsi * s.cc1 / 3.0
@@ -1691,7 +1691,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	var r [6]float64
 	err := s.sgp4(0.0, r[0:3], r[3:])
 
-	s.init = 'n'
+	s.isInit = false
 
 	return err
 }
@@ -1821,7 +1821,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	tempe := s.bstar * s.cc4 * s.t
 	templ := s.t2cof * t2
 
-	if s.isimp != 1 {
+	if !s.isDeepSpace {
 		delomg := s.omgcof * s.t
 		// sgp4fix use mutliply for speed instead of pow
 		delmtemp := 1.0 + s.eta*math.Cos(xmdf)
@@ -1897,7 +1897,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	cosip := cosim
 
 	var dpperVars dpperVars
-	dpperVars.init = 'n'
+	dpperVars.isInit = false
 	dpperVars.inclo = s.inclo
 	dpperVars.ep = ep
 	dpperVars.inclp = xincp

@@ -122,7 +122,6 @@ func TestReference(t *testing.T) {
 	testFileName := "reftest_java.out"
 	// testFileName := "reftest_cpp.out"
 	testMap, err := loadRefTest(testFileName)
-
 	if err != nil {
 		t.Error(err)
 	} else {
