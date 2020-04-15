@@ -119,8 +119,8 @@ func TestReference(t *testing.T) {
 	var r [6]float64
 	gravConst := "wgs72"
 	treshold := 1.0e-8
-	testFileName := "java_sgp4_ver.out"
-	// testFileName := "reftest.out"
+	testFileName := "reftest_java.out"
+	// testFileName := "reftest_cpp.out"
 	testMap, err := loadRefTest(testFileName)
 
 	if err != nil {
