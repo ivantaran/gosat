@@ -171,74 +171,69 @@ type initlVars struct {
 	sinio  float64
 }
 
-type sgp4ds struct {
-	cnodm                   float64
-	cosim                   float64
-	cosomm                  float64
-	day                     float64
-	em                      float64
-	emsq                    float64
-	gam                     float64
-	nm                      float64
-	mm, nodem, argpm, inclm float64
-	rtemsq                  float64
-	s1                      float64
-	s2                      float64
-	s3                      float64
-	s4                      float64
-	s5                      float64
-	s6                      float64
-	s7                      float64
-	sinim                   float64
-	sinomm                  float64
-	snodm                   float64
-	ss1                     float64
-	ss2                     float64
-	ss3                     float64
-	ss4                     float64
-	ss5                     float64
-	ss6                     float64
-	ss7                     float64
-	sz1                     float64
-	sz11                    float64
-	sz12                    float64
-	sz13                    float64
-	sz2                     float64
-	sz21                    float64
-	sz22                    float64
-	sz23                    float64
-	sz3                     float64
-	sz31                    float64
-	sz32                    float64
-	sz33                    float64
-	z1                      float64
-	z11                     float64
-	z12                     float64
-	z13                     float64
-	z2                      float64
-	z21                     float64
-	z22                     float64
-	z23                     float64
-	z3                      float64
-	z31                     float64
-	z32                     float64
-	z33                     float64
-}
-
-type dpperVars struct {
-	isInit                      bool    // read only
-	inclo                       float64 // read only
-	ep, inclp, nodep, argpp, mp float64
-}
-
-type dspaceVars struct {
-	tc,
+type meanVars struct {
 	argpm,
 	em,
 	inclm,
 	mm,
 	nm,
 	nodem float64
+}
+
+type commonVars struct {
+	cnodm  float64
+	cosim  float64
+	cosomm float64
+	emsq   float64
+	gam    float64
+	rtemsq float64
+	s1     float64
+	s2     float64
+	s3     float64
+	s4     float64
+	s5     float64
+	s6     float64
+	s7     float64
+	sinim  float64
+	sinomm float64
+	snodm  float64
+	ss1    float64
+	ss2    float64
+	ss3    float64
+	ss4    float64
+	ss5    float64
+	ss6    float64
+	ss7    float64
+	sz1    float64
+	sz11   float64
+	sz12   float64
+	sz13   float64
+	sz2    float64
+	sz21   float64
+	sz22   float64
+	sz23   float64
+	sz3    float64
+	sz31   float64
+	sz32   float64
+	sz33   float64
+	z1     float64
+	z11    float64
+	z12    float64
+	z13    float64
+	z2     float64
+	z21    float64
+	z22    float64
+	z23    float64
+	z3     float64
+	z31    float64
+	z32    float64
+	z33    float64
+}
+
+type dpperVars struct {
+	isInit                      bool    // read only
+	inclo                       float64 // read only
+	ep, inclp, nodep, argpp, mp float64
 }
 
 //Tle TLE record container
@@ -404,31 +399,30 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) initl(epoch float64) *initlVars {
-	var v initlVars
+func (s *elsetrec) initl(vars *initlVars, epoch float64) {
 	/* ------------- calculate auxillary epoch quantities ---------- */
-	v.eccsq = s.ecco * s.ecco
-	v.omeosq = 1.0 - v.eccsq
-	v.rteosq = math.Sqrt(v.omeosq)
-	v.cosio = math.Cos(s.inclo)
-	v.cosio2 = v.cosio * v.cosio
+	vars.eccsq = s.ecco * s.ecco
+	vars.omeosq = 1.0 - vars.eccsq
+	vars.rteosq = math.Sqrt(vars.omeosq)
+	vars.cosio = math.Cos(s.inclo)
+	vars.cosio2 = vars.cosio * vars.cosio
 
 	/* ------------------ un-kozai the mean motion ----------------- */
 	ak := math.Pow(s.xke/s.noKozai, x2o3)
-	d1 := 0.75 * s.j2 * (3.0*v.cosio2 - 1.0) / (v.rteosq * v.omeosq)
+	d1 := 0.75 * s.j2 * (3.0*vars.cosio2 - 1.0) / (vars.rteosq * vars.omeosq)
 	del := d1 / (ak * ak)
 	adel := ak * (1.0 - del*del - del*(1.0/3.0+134.0*del*del/81.0))
 	del = d1 / (adel * adel)
 	s.noUnkozai = s.noKozai / (1.0 + del)
 
-	v.ao = math.Pow(s.xke/s.noUnkozai, x2o3)
-	v.sinio = math.Sin(s.inclo)
-	po := v.ao * v.omeosq
-	v.con42 = 1.0 - 5.0*v.cosio2
-	s.con41 = -v.con42 - v.cosio2 - v.cosio2
-	v.ainv = 1.0 / v.ao
-	v.posq = po * po
-	v.rp = v.ao * (1.0 - s.ecco)
+	vars.ao = math.Pow(s.xke/s.noUnkozai, x2o3)
+	vars.sinio = math.Sin(s.inclo)
+	po := vars.ao * vars.omeosq
+	vars.con42 = 1.0 - 5.0*vars.cosio2
+	s.con41 = -vars.con42 - vars.cosio2 - vars.cosio2
+	vars.ainv = 1.0 / vars.ao
+	vars.posq = po * po
+	vars.rp = vars.ao * (1.0 - s.ecco)
 	s.method = 'n'
 
 	ts70 := epoch - 7305.0
@@ -444,8 +438,6 @@ func (s *elsetrec) initl(epoch float64) *initlVars {
 		gsto1 = gsto1 + twoPi
 	}
 	s.gsto = gstime(epoch + 2433281.5)
-
-	return &v
 }
 
 /*
@@ -537,7 +529,7 @@ func (s *elsetrec) getgravconst(whichconst string) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (vars *dspaceVars) dspace(s *elsetrec) {
+func (s *elsetrec) dspace(vars *meanVars, tc float64) {
 	const (
 		fasx2 = 0.13130908
 		fasx4 = 2.8843198
@@ -554,7 +546,7 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 	)
 
 	/* ----------- calculate deep space resonance effects ----------- */
-	theta := math.Mod(s.gsto+vars.tc*rptim, twoPi)
+	theta := math.Mod(s.gsto+tc*rptim, twoPi)
 	vars.em += s.dedt * s.t
 
 	vars.inclm += s.didt * s.t
@@ -674,7 +666,7 @@ func (vars *dspaceVars) dspace(s *elsetrec) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
+func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, epoch float64, tc float64) {
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -686,15 +678,15 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 		zsings = -0.98088458
 	)
 
-	ds.nm = s.noUnkozai
-	ds.em = s.ecco
+	mv.nm = s.noUnkozai
+	mv.em = s.ecco
 	ds.snodm = math.Sin(s.nodeo)
 	ds.cnodm = math.Cos(s.nodeo)
 	ds.sinomm = math.Sin(s.argpo)
 	ds.cosomm = math.Cos(s.argpo)
 	ds.sinim = math.Sin(s.inclo)
 	ds.cosim = math.Cos(s.inclo)
-	ds.emsq = ds.em * ds.em
+	ds.emsq = mv.em * mv.em
 	betasq := 1.0 - ds.emsq
 	ds.rtemsq = math.Sqrt(betasq)
 
@@ -704,15 +696,15 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	s.plo = 0.0
 	s.pgho = 0.0
 	s.pho = 0.0
-	ds.day = epoch + 18261.5 + tc/1440.0 //TODO remove day from struct, it's local variable
-	xnodce := math.Mod(4.5236020-9.2422029e-4*ds.day, twoPi)
+	day := epoch + 18261.5 + tc/1440.0
+	xnodce := math.Mod(4.5236020-9.2422029e-4*day, twoPi)
 	stem := math.Sin(xnodce)
 	ctem := math.Cos(xnodce)
 	zcosil := 0.91375164 - 0.03568096*ctem
 	zsinil := math.Sqrt(1.0 - zcosil*zcosil)
 	zsinhl := 0.089683511 * stem / zsinil
 	zcoshl := math.Sqrt(1.0 - zsinhl*zsinhl)
-	ds.gam = 5.8351514 + 0.0019443680*ds.day
+	ds.gam = 5.8351514 + 0.0019443680*day
 	zx := 0.39785416 * stem / zsinil
 	zy := zcoshl*ctem + 0.91744867*zsinhl*stem
 	zx = math.Atan2(zx, zy)
@@ -728,7 +720,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 	zcosh := ds.cnodm
 	zsinh := ds.snodm
 	cc := c1ss
-	xnoi := 1.0 / ds.nm
+	xnoi := 1.0 / mv.nm
 
 	for lsflg := 1; lsflg <= 2; lsflg++ {
 		a1 := zcosg*zcosh + zsing*zcosi*zsinh
@@ -769,7 +761,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 		ds.s3 = cc * xnoi
 		ds.s2 = -0.5 * ds.s3 / ds.rtemsq
 		ds.s4 = ds.s3 * ds.rtemsq
-		ds.s1 = -15.0 * ds.em * ds.s4
+		ds.s1 = -15.0 * mv.em * ds.s4
 		ds.s5 = x1*x3 + x2*x4
 		ds.s6 = x2*x3 + x1*x4
 		ds.s7 = x2*x4 - x1*x3
@@ -805,8 +797,8 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 		}
 	}
 
-	s.zmol = math.Mod(4.7199672+0.22997150*ds.day-ds.gam, twoPi)
-	s.zmos = math.Mod(6.2565837+0.017201977*ds.day, twoPi)
+	s.zmol = math.Mod(4.7199672+0.22997150*day-ds.gam, twoPi)
+	s.zmos = math.Mod(6.2565837+0.017201977*day, twoPi)
 
 	/* ------------------------ do solar terms ---------------------- */
 	s.se2 = 2.0 * ds.ss1 * ds.ss6
@@ -852,7 +844,7 @@ func (s *elsetrec) dscom(ds *sgp4ds, epoch float64, tc float64) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
+func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, tc, xpidot float64) {
 	const (
 		q22    = 1.7891679e-6
 		q31    = 2.1460748e-6
@@ -870,9 +862,9 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	aonv := 0.0
 
 	/* -------------------- deep space initialization ------------ */
-	if (ds.nm >= 8.26e-3) && (ds.nm <= 9.24e-3) && (ds.em >= 0.5) {
+	if (mv.nm >= 8.26e-3) && (mv.nm <= 9.24e-3) && (mv.em >= 0.5) {
 		s.irez = 2
-	} else if (ds.nm < 0.0052359877) && (ds.nm > 0.0034906585) {
+	} else if (mv.nm < 0.0052359877) && (mv.nm > 0.0034906585) {
 		s.irez = 1
 	} else {
 		s.irez = 0
@@ -885,7 +877,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	sghs := ds.ss4 * zns * (ds.sz31 + ds.sz33 - 6.0)
 	shs := -zns * ds.ss2 * (ds.sz21 + ds.sz23)
 	// sgp4fix for 180 deg incl
-	if (ds.inclm < 5.2359877e-2) || (ds.inclm > math.Pi-5.2359877e-2) {
+	if (mv.inclm < 5.2359877e-2) || (mv.inclm > math.Pi-5.2359877e-2) {
 		shs = 0.0
 	}
 	if ds.sinim != 0.0 { // TODO: comparing a floating point number with zero
@@ -900,7 +892,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 	sghl := ds.s4 * znl * (ds.z31 + ds.z33 - 6.0)
 	shll := -znl * ds.s2 * (ds.z21 + ds.z23)
 	// sgp4fix for 180 deg incl
-	if (ds.inclm < 5.2359877e-2) || (ds.inclm > math.Pi-5.2359877e-2) {
+	if (mv.inclm < 5.2359877e-2) || (mv.inclm > math.Pi-5.2359877e-2) {
 		shll = 0.0
 	}
 	s.domdt = sgs + sghl
@@ -912,11 +904,11 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 
 	/* ----------- calculate deep space resonance effects -------- */
 	theta := math.Mod(s.gsto+tc*rptim, twoPi)
-	ds.em += s.dedt * s.t
-	ds.inclm += s.didt * s.t
-	ds.argpm += s.domdt * s.t
-	ds.nodem += s.dnodt * s.t
-	ds.mm += s.dmdt * s.t
+	mv.em += s.dedt * s.t
+	mv.inclm += s.didt * s.t
+	mv.argpm += s.domdt * s.t
+	mv.nodem += s.dnodt * s.t
+	mv.mm += s.dmdt * s.t
 	//   sgp4fix for negative inclinations
 	//   the following if statement should be commented out
 	// if (inclm < 0.0)
@@ -928,47 +920,47 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 
 	/* -------------- initialize the resonance terms ------------- */
 	if s.irez != 0 {
-		aonv = math.Pow(ds.nm/s.xke, x2o3)
+		aonv = math.Pow(mv.nm/s.xke, x2o3)
 
 		/* ---------- geopotential resonance for 12 hour orbits ------ */
 		if s.irez == 2 {
 			cosisq := ds.cosim * ds.cosim
-			emo := ds.em
-			ds.em = s.ecco
+			emo := mv.em
+			mv.em = s.ecco
 			emsqo := ds.emsq
 			ds.emsq = iv.eccsq
-			eoc := ds.em * ds.emsq
-			g201 := -0.306 - (ds.em-0.64)*0.440
+			eoc := mv.em * ds.emsq
+			g201 := -0.306 - (mv.em-0.64)*0.440
 
 			var g211, g310, g322, g410, g422, g520, g521, g532, g533 float64
 
-			if ds.em <= 0.65 {
-				g211 = 3.616 - 13.2470*ds.em + 16.2900*ds.emsq
-				g310 = -19.302 + 117.3900*ds.em - 228.4190*ds.emsq + 156.5910*eoc
-				g322 = -18.9068 + 109.7927*ds.em - 214.6334*ds.emsq + 146.5816*eoc
-				g410 = -41.122 + 242.6940*ds.em - 471.0940*ds.emsq + 313.9530*eoc
-				g422 = -146.407 + 841.8800*ds.em - 1629.014*ds.emsq + 1083.4350*eoc
-				g520 = -532.114 + 3017.977*ds.em - 5740.032*ds.emsq + 3708.2760*eoc
+			if mv.em <= 0.65 {
+				g211 = 3.616 - 13.2470*mv.em + 16.2900*ds.emsq
+				g310 = -19.302 + 117.3900*mv.em - 228.4190*ds.emsq + 156.5910*eoc
+				g322 = -18.9068 + 109.7927*mv.em - 214.6334*ds.emsq + 146.5816*eoc
+				g410 = -41.122 + 242.6940*mv.em - 471.0940*ds.emsq + 313.9530*eoc
+				g422 = -146.407 + 841.8800*mv.em - 1629.014*ds.emsq + 1083.4350*eoc
+				g520 = -532.114 + 3017.977*mv.em - 5740.032*ds.emsq + 3708.2760*eoc
 			} else {
-				g211 = -72.099 + 331.819*ds.em - 508.738*ds.emsq + 266.724*eoc
-				g310 = -346.844 + 1582.851*ds.em - 2415.925*ds.emsq + 1246.113*eoc
-				g322 = -342.585 + 1554.908*ds.em - 2366.899*ds.emsq + 1215.972*eoc
-				g410 = -1052.797 + 4758.686*ds.em - 7193.992*ds.emsq + 3651.957*eoc
-				g422 = -3581.690 + 16178.110*ds.em - 24462.770*ds.emsq + 12422.520*eoc
-				if ds.em > 0.715 {
-					g520 = -5149.66 + 29936.92*ds.em - 54087.36*ds.emsq + 31324.56*eoc
+				g211 = -72.099 + 331.819*mv.em - 508.738*ds.emsq + 266.724*eoc
+				g310 = -346.844 + 1582.851*mv.em - 2415.925*ds.emsq + 1246.113*eoc
+				g322 = -342.585 + 1554.908*mv.em - 2366.899*ds.emsq + 1215.972*eoc
+				g410 = -1052.797 + 4758.686*mv.em - 7193.992*ds.emsq + 3651.957*eoc
+				g422 = -3581.690 + 16178.110*mv.em - 24462.770*ds.emsq + 12422.520*eoc
+				if mv.em > 0.715 {
+					g520 = -5149.66 + 29936.92*mv.em - 54087.36*ds.emsq + 31324.56*eoc
 				} else {
-					g520 = 1464.74 - 4664.75*ds.em + 3763.64*ds.emsq
+					g520 = 1464.74 - 4664.75*mv.em + 3763.64*ds.emsq
 				}
 			}
-			if ds.em < 0.7 {
-				g533 = -919.22770 + 4988.6100*ds.em - 9064.7700*ds.emsq + 5542.21*eoc
-				g521 = -822.71072 + 4568.6173*ds.em - 8491.4146*ds.emsq + 5337.524*eoc
-				g532 = -853.66600 + 4690.2500*ds.em - 8624.7700*ds.emsq + 5341.4*eoc
+			if mv.em < 0.7 {
+				g533 = -919.22770 + 4988.6100*mv.em - 9064.7700*ds.emsq + 5542.21*eoc
+				g521 = -822.71072 + 4568.6173*mv.em - 8491.4146*ds.emsq + 5337.524*eoc
+				g532 = -853.66600 + 4690.2500*mv.em - 8624.7700*ds.emsq + 5341.4*eoc
 			} else {
-				g533 = -37995.780 + 161616.52*ds.em - 229838.20*ds.emsq + 109377.94*eoc
-				g521 = -51752.104 + 218913.95*ds.em - 309468.16*ds.emsq + 146349.42*eoc
-				g532 = -40023.880 + 170470.89*ds.em - 242699.48*ds.emsq + 115605.82*eoc
+				g533 = -37995.780 + 161616.52*mv.em - 229838.20*ds.emsq + 109377.94*eoc
+				g521 = -51752.104 + 218913.95*mv.em - 309468.16*ds.emsq + 146349.42*eoc
+				g532 = -40023.880 + 170470.89*mv.em - 242699.48*ds.emsq + 115605.82*eoc
 			}
 
 			sini2 := ds.sinim * ds.sinim
@@ -986,7 +978,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 				(2.0 - 8.0*ds.cosim + cosisq*(-12.0+8.0*ds.cosim+10.0*cosisq))
 			f543 := 29.53125 * ds.sinim *
 				(-2.0 - 8.0*ds.cosim + cosisq*(12.0+8.0*ds.cosim-10.0*cosisq))
-			xno2 := ds.nm * ds.nm
+			xno2 := mv.nm * mv.nm
 			ainv2 := aonv * aonv
 			temp1 := 3.0 * xno2 * ainv2
 			temp := temp1 * root22
@@ -1009,7 +1001,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 			s.d5433 = temp * f543 * g533
 			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, twoPi)
 			s.xfact = s.mdot + s.dmdt + 2.0*(s.nodedot+s.dnodt-rptim) - s.noUnkozai
-			ds.em = emo
+			mv.em = emo
 			ds.emsq = emsqo
 		}
 
@@ -1022,7 +1014,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 			f311 := 0.9375*ds.sinim*ds.sinim*(1.0+3.0*ds.cosim) - 0.75*(1.0+ds.cosim)
 			f330 := 1.0 + ds.cosim
 			f330 = 1.875 * f330 * f330 * f330
-			s.del1 = 3.0 * ds.nm * ds.nm * aonv * aonv
+			s.del1 = 3.0 * mv.nm * mv.nm * aonv * aonv
 			s.del2 = 2.0 * s.del1 * f220 * g200 * q22
 			s.del3 = 3.0 * s.del1 * f330 * g300 * q33 * aonv
 			s.del1 = s.del1 * f311 * g310 * q31 * aonv
@@ -1034,7 +1026,7 @@ func (s *elsetrec) dsinit(ds *sgp4ds, iv *initlVars, tc, xpidot float64) {
 		s.xli = s.xlamo
 		s.xni = s.noUnkozai
 		s.atime = 0.0
-		ds.nm = s.noUnkozai
+		mv.nm = s.noUnkozai
 	}
 }
 
@@ -1161,7 +1153,8 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	s.isInit = true
 	s.t = 0.0
 
-	iv := s.initl(t.epoch)
+	var iv initlVars
+	s.initl(&iv, t.epoch)
 
 	s.a = math.Pow(s.noUnkozai*s.tumin, -x2o3)
 	s.alta = s.a*(1.0+s.ecco) - 1.0
@@ -1246,13 +1239,14 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			s.method = 'd'
 			s.isDeepSpace = true
 			tc := 0.0
-			var ds sgp4ds
-			ds.inclm = s.inclo
-			s.dscom(&ds, t.epoch, tc)
+			var ds commonVars
+			var mv meanVars
+			mv.inclm = s.inclo
+			s.dscom(&mv, &ds, t.epoch, tc)
 
 			var dpperVars dpperVars
 			dpperVars.isInit = s.isInit
-			dpperVars.inclo = ds.inclm
+			dpperVars.inclo = mv.inclm
 			dpperVars.ep = s.ecco
 			dpperVars.inclp = s.inclo
 			dpperVars.nodep = s.nodeo
@@ -1266,10 +1260,10 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			s.argpo = dpperVars.argpp
 			s.mo = dpperVars.mp
 
-			ds.argpm = 0.0
-			ds.nodem = 0.0
-			ds.mm = 0.0
-			s.dsinit(&ds, iv, tc, xpidot)
+			mv.argpm = 0.0
+			mv.nodem = 0.0
+			mv.mm = 0.0
+			s.dsinit(&mv, &ds, &iv, tc, xpidot)
 		}
 
 		/* ----------- set variables if not deep space ----------- */
@@ -1337,7 +1331,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 	const temp4 = 1.5e-12
 
-	var dspaceVars dspaceVars
+	var meanVars meanVars
 	vkmpersec := s.radiusearthkm * s.xke / 60.0
 
 	/* --------------------- clear sgp4 error flag ----------------- */
@@ -1348,10 +1342,10 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	xmdf := s.mo + s.mdot*s.t
 	argpdf := s.argpo + s.argpdot*s.t
 	nodedf := s.nodeo + s.nodedot*s.t
-	dspaceVars.argpm = argpdf
-	dspaceVars.mm = xmdf
+	meanVars.argpm = argpdf
+	meanVars.mm = xmdf
 	t2 := s.t * s.t
-	dspaceVars.nodem = nodedf + s.nodecf*t2
+	meanVars.nodem = nodedf + s.nodecf*t2
 	tempa := 1.0 - s.cc1*s.t
 	tempe := s.bstar * s.cc4 * s.t
 	templ := s.t2cof * t2
@@ -1362,72 +1356,71 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		delmtemp := 1.0 + s.eta*math.Cos(xmdf)
 		delm := s.xmcof * (delmtemp*delmtemp*delmtemp - s.delmo)
 		temp := delomg + delm
-		dspaceVars.mm = xmdf + temp
-		dspaceVars.argpm = argpdf - temp
+		meanVars.mm = xmdf + temp
+		meanVars.argpm = argpdf - temp
 		t3 := t2 * s.t
 		t4 := t3 * s.t
 		tempa -= s.d2*t2 + s.d3*t3 + s.d4*t4
-		tempe += s.bstar * s.cc5 * (math.Sin(dspaceVars.mm) - s.sinmao)
+		tempe += s.bstar * s.cc5 * (math.Sin(meanVars.mm) - s.sinmao)
 		templ += s.t3cof*t3 + t4*(s.t4cof+s.t*s.t5cof)
 	}
 
-	dspaceVars.nm = s.noUnkozai
-	dspaceVars.em = s.ecco
-	dspaceVars.inclm = s.inclo
+	meanVars.nm = s.noUnkozai
+	meanVars.em = s.ecco
+	meanVars.inclm = s.inclo
 	if s.method == 'd' {
-		dspaceVars.tc = s.t
-		dspaceVars.dspace(s)
+		s.dspace(&meanVars, s.t)
 	}
 
-	if dspaceVars.nm <= 0.0 {
+	if meanVars.nm <= 0.0 {
 		s.error = 2
 		// sgp4fix add return
 		return errors.New("nm <= 0.0")
 	}
-	am := math.Pow(s.xke/dspaceVars.nm, x2o3) * tempa * tempa
-	dspaceVars.nm = s.xke / math.Pow(am, 1.5)
-	dspaceVars.em -= tempe
+	am := math.Pow(s.xke/meanVars.nm, x2o3) * tempa * tempa
+	meanVars.nm = s.xke / math.Pow(am, 1.5)
+	meanVars.em -= tempe
 
 	// fix tolerance for error recognition
 	// sgp4fix am is fixed from the previous nm check
-	if (dspaceVars.em >= 1.0) || (dspaceVars.em < -0.001) /* || (am < 0.95)*/ {
+	if (meanVars.em >= 1.0) || (meanVars.em < -0.001) /* || (am < 0.95)*/ {
 		s.error = 1
 		// sgp4fix to return if there is an error in eccentricity
 		return errors.New("(em >= 1.0) || (em < -0.001)")
 	}
 	// sgp4fix fix tolerance to avoid a divide by zero
-	if dspaceVars.em < 1.0e-6 {
-		dspaceVars.em = 1.0e-6
+	if meanVars.em < 1.0e-6 {
+		meanVars.em = 1.0e-6
 	}
-	dspaceVars.mm += s.noUnkozai * templ
-	xlm := dspaceVars.mm + dspaceVars.argpm + dspaceVars.nodem
-	emsq := dspaceVars.em * dspaceVars.em
+	meanVars.mm += s.noUnkozai * templ
+	xlm := meanVars.mm + meanVars.argpm + meanVars.nodem
+	emsq := meanVars.em * meanVars.em
 	temp := 1.0 - emsq
 
-	dspaceVars.nodem = math.Mod(dspaceVars.nodem, twoPi)
-	dspaceVars.argpm = math.Mod(dspaceVars.argpm, twoPi)
+	meanVars.nodem = math.Mod(meanVars.nodem, twoPi)
+	meanVars.argpm = math.Mod(meanVars.argpm, twoPi)
 	xlm = math.Mod(xlm, twoPi)
-	dspaceVars.mm = math.Mod(xlm-dspaceVars.argpm-dspaceVars.nodem, twoPi)
+	meanVars.mm = math.Mod(xlm-meanVars.argpm-meanVars.nodem, twoPi)
 
 	// sgp4fix recover singly averaged mean elements
 	s.am = am
-	s.em = dspaceVars.em
-	s.im = dspaceVars.inclm
-	s.Om = dspaceVars.nodem
-	s.om = dspaceVars.argpm
-	s.mm = dspaceVars.mm
-	s.nm = dspaceVars.nm
+	s.em = meanVars.em
+	s.im = meanVars.inclm
+	s.Om = meanVars.nodem
+	s.om = meanVars.argpm
+	s.mm = meanVars.mm
+	s.nm = meanVars.nm
 
 	/* ----------------- compute extra mean quantities ------------- */
-	sinim := math.Sin(dspaceVars.inclm)
-	cosim := math.Cos(dspaceVars.inclm)
+	sinim := math.Sin(meanVars.inclm)
+	cosim := math.Cos(meanVars.inclm)
 
 	/* -------------------- add lunar-solar periodics -------------- */
-	ep := dspaceVars.em
-	xincp := dspaceVars.inclm
-	argpp := dspaceVars.argpm
-	nodep := dspaceVars.nodem
-	mp := dspaceVars.mm
+	ep := meanVars.em
+	xincp := meanVars.inclm
+	argpp := meanVars.argpm
+	nodep := meanVars.nodem
+	mp := meanVars.mm
 	sinip := sinim
 	cosip := cosim
 
@@ -1537,8 +1530,8 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	su = su - 0.25*temp2*s.x7thm1*sin2u
 	xnode := nodep + 1.5*temp2*cosip*sin2u
 	xinc := xincp + 1.5*temp2*cosip*sinip*cos2u
-	mvt := rdotl - dspaceVars.nm*temp1*s.x1mth2*sin2u/s.xke
-	rvdot := rvdotl + dspaceVars.nm*temp1*(s.x1mth2*cos2u+1.5*s.con41)/s.xke
+	mvt := rdotl - meanVars.nm*temp1*s.x1mth2*sin2u/s.xke
+	rvdot := rvdotl + meanVars.nm*temp1*(s.x1mth2*cos2u+1.5*s.con41)/s.xke
 
 	/* --------------------- orientation vectors ------------------- */
 	sinsu := math.Sin(su)
