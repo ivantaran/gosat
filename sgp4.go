@@ -1256,7 +1256,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 *  return code - non-zero on error.
 *                   1 - mean elements, ecc >= 1.0 or ecc < -0.001 or a < 0.95 er
 *                   2 - mean motion less than 0.0
-*                   3 - pert elements, ecc < 0.0  or  ecc > 1.0
+*                   3 - pert elements, ecc < 0.0 or ecc > 1.0
 *                   4 - semi-latus rectum < 0.0
 *                   5 - epoch elements are sub-orbital
 *                   6 - satellite has decayed
@@ -1317,19 +1317,15 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 
 	if s.nm <= 0.0 {
 		s.error = 2
-		// sgp4fix add return
-		return errors.New("nm <= 0.0")
+		return errors.New("mean motion less than 0.0")
 	}
 	s.am = math.Pow(s.xke/s.nm, x2o3) * tempa * tempa
 	s.nm = s.xke / math.Pow(s.am, 1.5)
 	s.em -= tempe
 
-	// fix tolerance for error recognition
-	// sgp4fix am is fixed from the previous nm check
 	if (s.em >= 1.0) || (s.em < -0.001) /* || (am < 0.95)*/ {
 		s.error = 1
-		// sgp4fix to return if there is an error in eccentricity
-		return errors.New("(em >= 1.0) || (em < -0.001)")
+		return errors.New("mean elements, ecc >= 1.0 or ecc < -0.001")
 	}
 	// sgp4fix fix tolerance to avoid a divide by zero
 	if s.em < 1.0e-6 {
@@ -1382,8 +1378,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		}
 		if (ep < 0.0) || (ep > 1.0) {
 			s.error = 3
-			// sgp4fix add return
-			return errors.New("(ep < 0.0) || (ep > 1.0)")
+			return errors.New("pert elements, ecc < 0.0 or ecc > 1.0")
 		}
 	}
 
@@ -1436,8 +1431,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	pl := s.am * (1.0 - el2)
 	if pl < 0.0 {
 		s.error = 4
-		// sgp4fix add return
-		return errors.New("pl < 0.0")
+		return errors.New("semi-latus rectum < 0.0")
 	}
 	rl := s.am * (1.0 - ecose)
 	rdotl := math.Sqrt(s.am) * esine / rl
@@ -1491,10 +1485,9 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	v[1] = (mvt*uy + rvdot*vy) * vkmpersec
 	v[2] = (mvt*uz + rvdot*vz) * vkmpersec
 
-	// sgp4fix for decaying satellites
 	if mrt < 1.0 {
 		s.error = 6
-		return errors.New("mrt < 1.0")
+		return errors.New("satellite has decayed")
 	}
 
 	return nil
