@@ -115,7 +115,7 @@ type elsetrec struct {
 
 	// TODO: remove unused fields below
 	// Additional elements to capture relevant TLE and object information:
-	dia_mm      int     //RSO dia in mm // TODO: long originally
+	dia_mm      int     //RSO dia in mm
 	period_sec  float64 //Period in seconds
 	active      bool    //"Active S/C" flag (0=n, 1=y)
 	not_orbital bool    //"Orbiting S/C" flag (0=n, 1=y)
@@ -620,7 +620,7 @@ func (s *elsetrec) dspace() {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, tc float64) {
+func (s *elsetrec) dscom(mv *meanVars, ds *commonVars) {
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -651,7 +651,7 @@ func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, tc float64) {
 	s.plo = 0.0
 	s.pgho = 0.0
 	s.pho = 0.0
-	day := s.epoch + 18261.5 + tc/1440.0
+	day := s.epoch + 18261.5
 	xnodce := math.Mod(4.5236020-9.2422029e-4*day, twoPi)
 	stem := math.Sin(xnodce)
 	ctem := math.Cos(xnodce)
@@ -799,7 +799,7 @@ func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, tc float64) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, tc, xpidot float64) {
+func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, xpidot float64) {
 	const (
 		q22    = 1.7891679e-6
 		q31    = 2.1460748e-6
@@ -858,7 +858,7 @@ func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, tc, xpido
 	}
 
 	/* ----------- calculate deep space resonance effects -------- */
-	theta := math.Mod(s.gsto+tc*rptim, twoPi)
+	// theta := math.Mod(s.gsto+tc*rptim, twoPi)
 	mv.em += s.dedt * s.t
 	mv.inclm += s.didt * s.t // TODO: these calculations aren't used further
 	mv.argpm += s.domdt * s.t
@@ -954,7 +954,7 @@ func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, tc, xpido
 			temp = 2.0 * temp1 * root54
 			s.d5421 = temp * f542 * g521
 			s.d5433 = temp * f543 * g533
-			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-theta-theta, twoPi)
+			s.xlamo = math.Mod(s.mo+s.nodeo+s.nodeo-s.gsto-s.gsto, twoPi)
 			s.xfact = s.mdot + s.dmdt + 2.0*(s.nodedot+s.dnodt-rptim) - s.noUnkozai
 			mv.em = emo
 			ds.emsq = emsqo
@@ -973,7 +973,7 @@ func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, tc, xpido
 			s.del2 = 2.0 * s.del1 * f220 * g200 * q22
 			s.del3 = 3.0 * s.del1 * f330 * g300 * q33 * aonv
 			s.del1 = s.del1 * f311 * g310 * q31 * aonv
-			s.xlamo = math.Mod(s.mo+s.nodeo+s.argpo-theta, twoPi)
+			s.xlamo = math.Mod(s.mo+s.nodeo+s.argpo-s.gsto, twoPi)
 			s.xfact = s.mdot + xpidot - rptim + s.dmdt + s.domdt + s.dnodt - s.noUnkozai
 		}
 
@@ -1183,10 +1183,10 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 		if (twoPi / s.noUnkozai) >= 225.0 {
 			s.method = 'd'
 			s.isDeepSpace = true
-			tc := 0.0 // TODO: remove tc
+
 			var ds commonVars
 			var mv meanVars
-			s.dscom(&mv, &ds, tc)
+			s.dscom(&mv, &ds)
 
 			var dpperVars dpperVars
 			dpperVars.isInit = s.isInit
@@ -1207,7 +1207,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			mv.argpm = 0.0
 			mv.nodem = 0.0
 			mv.mm = 0.0
-			s.dsinit(&mv, &ds, &iv, tc, xpidot)
+			s.dsinit(&mv, &ds, &iv, xpidot)
 		}
 
 		/* ----------- set variables if not deep space ----------- */
@@ -1275,7 +1275,6 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 	const temp4 = 1.5e-12
 
-	// var meanVars meanVars // TODO: remove local this var
 	vkmpersec := s.radiusearthkm * s.xke / 60.0
 
 	/* --------------------- clear sgp4 error flag ----------------- */
@@ -1345,15 +1344,6 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	s.argpm = math.Mod(s.argpm, twoPi)
 	xlm = math.Mod(xlm, twoPi)
 	s.mm = math.Mod(xlm-s.argpm-s.nodem, twoPi)
-
-	// sgp4fix recover singly averaged mean elements
-	// s.am = s.am // TODO
-	// s.em = s.em
-	// s.inclm = s.inclm
-	// s.nodem = s.nodem
-	// s.argpm = s.argpm
-	// s.mm = s.mm
-	// s.nm = s.nm
 
 	/* ----------------- compute extra mean quantities ------------- */
 	sinim := math.Sin(s.inclm)
