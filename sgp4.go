@@ -12,17 +12,10 @@ const (
 )
 
 type elsetrec struct {
-	class         rune
-	design        string
-	elnum         int
-	ephtype       int
 	error         int
 	isInit        bool
 	method        rune
 	operationmode rune
-	revnum        int
-	satnum        int
-	title         string
 
 	/* Near Earth */
 	isDeepSpace bool
@@ -110,40 +103,17 @@ type elsetrec struct {
 	xli   float64
 	xni   float64
 	/*  */
-	a       float64
-	altp    float64
-	alta    float64
-	nddot   float64
-	ndot    float64
-	bstar   float64
-	rcse    float64
-	inclo   float64
-	nodeo   float64
-	ecco    float64
-	argpo   float64
-	mo      float64
-	noKozai float64
-
-	// sgp4fix add unkozai'd variable
+	a         float64
+	altp      float64
+	alta      float64
+	rcse      float64
 	noUnkozai float64
-	// sgp4fix add singly averaged variables
-	am float64
-	em float64
-	im float64
-	Om float64
-	om float64
-	mm float64
-	nm float64
-	// sgp4fix add constant parameters to eliminate mutliple calls during execution
-	tumin         float64
-	mu            float64
-	radiusearthkm float64
-	xke           float64
-	j2            float64
-	j3            float64
-	j4            float64
-	j3oj2         float64
 
+	gravityVars
+	meanVars
+	Tle
+
+	// TODO: remove unused fields below
 	// Additional elements to capture relevant TLE and object information:
 	dia_mm      int     //RSO dia in mm // TODO: long originally
 	period_sec  float64 //Period in seconds
@@ -166,7 +136,19 @@ type initlVars struct {
 	sinio  float64
 }
 
+type gravityVars struct {
+	tumin         float64
+	mu            float64
+	radiusearthkm float64
+	xke           float64
+	j2            float64
+	j3            float64
+	j4            float64
+	j3oj2         float64
+}
+
 type meanVars struct {
+	am,
 	argpm,
 	em,
 	inclm,
@@ -371,7 +353,7 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) initl(vars *initlVars, epoch float64) {
+func (s *elsetrec) initl(vars *initlVars) {
 	/* ------------- calculate auxillary epoch quantities ---------- */
 	vars.eccsq = s.ecco * s.ecco
 	vars.omeosq = 1.0 - vars.eccsq
@@ -380,12 +362,12 @@ func (s *elsetrec) initl(vars *initlVars, epoch float64) {
 	vars.cosio2 = vars.cosio * vars.cosio
 
 	/* ------------------ un-kozai the mean motion ----------------- */
-	ak := math.Pow(s.xke/s.noKozai, x2o3)
+	ak := math.Pow(s.xke/s.no, x2o3)
 	d1 := 0.75 * s.j2 * (3.0*vars.cosio2 - 1.0) / (vars.rteosq * vars.omeosq)
 	del := d1 / (ak * ak)
 	adel := ak * (1.0 - del*del - del*(1.0/3.0+134.0*del*del/81.0))
 	del = d1 / (adel * adel)
-	s.noUnkozai = s.noKozai / (1.0 + del)
+	s.noUnkozai = s.no / (1.0 + del)
 
 	vars.ao = math.Pow(s.xke/s.noUnkozai, x2o3)
 	vars.sinio = math.Sin(s.inclo)
@@ -397,7 +379,7 @@ func (s *elsetrec) initl(vars *initlVars, epoch float64) {
 	vars.rp = vars.ao * (1.0 - s.ecco)
 	s.method = 'n'
 
-	ts70 := epoch - 7305.0
+	ts70 := s.epoch - 7305.0
 	ds70 := math.Floor(ts70 + 1.0e-8)
 	tfrac := ts70 - ds70
 	// find greenwich location at epoch
@@ -409,7 +391,7 @@ func (s *elsetrec) initl(vars *initlVars, epoch float64) {
 	if gsto1 < 0.0 {
 		gsto1 = gsto1 + twoPi
 	}
-	s.gsto = gstime(epoch + 2433281.5)
+	s.gsto = gstime(s.epoch + 2433281.5)
 }
 
 /*
@@ -446,7 +428,7 @@ func gstime(jdut1 float64) float64 {
 *    norad spacetrack report #3
 *    vallado, crawford, hujsak, kelso  2006
 --------------------------------------------------------------------------- */
-func (s *elsetrec) getgravconst(whichconst string) {
+func (s *gravityVars) setGravityVars(whichconst string) {
 	switch whichconst {
 	// -- wgs-72 low precision str#3 constants --
 	case "wgs72old":
@@ -638,7 +620,7 @@ func (s *elsetrec) dspace(vars *meanVars, tc float64) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, epoch float64, tc float64) {
+func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, tc float64) {
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -668,7 +650,7 @@ func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, epoch float64, tc float64
 	s.plo = 0.0
 	s.pgho = 0.0
 	s.pho = 0.0
-	day := epoch + 18261.5 + tc/1440.0
+	day := s.epoch + 18261.5 + tc/1440.0
 	xnodce := math.Mod(4.5236020-9.2422029e-4*day, twoPi)
 	stem := math.Sin(xnodce)
 	ctem := math.Cos(xnodce)
@@ -1093,29 +1075,17 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	s.xni = 0.0
 
 	/* ------------------------ earth constants ----------------------- */
-	s.getgravconst(whichconst)
+	s.setGravityVars(whichconst)
+	s.copy(t)
 
 	s.error = 0
 	s.operationmode = opsmode
 
-	s.satnum = t.satn
-	s.design = t.design
-	s.title = t.title
-	s.bstar = t.xbstar
-	s.ndot = t.xndot
-	s.nddot = t.xnddot
-	s.ecco = t.xecco
-	s.argpo = t.xargpo
-	s.inclo = t.xinclo
-	s.mo = t.xmo
-	s.noKozai = t.xno
-	s.nodeo = t.xnodeo
-
 	s.am = 0.0
 	s.em = 0.0
-	s.im = 0.0
-	s.Om = 0.0
-	s.om = 0.0
+	s.inclm = 0.0
+	s.nodem = 0.0
+	s.argpm = 0.0
 	s.mm = 0.0
 	s.nm = 0.0
 
@@ -1128,7 +1098,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	s.t = 0.0
 
 	var iv initlVars
-	s.initl(&iv, t.epoch)
+	s.initl(&iv)
 
 	s.a = math.Pow(s.noUnkozai*s.tumin, -x2o3)
 	s.alta = s.a*(1.0+s.ecco) - 1.0
@@ -1212,11 +1182,11 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 		if (twoPi / s.noUnkozai) >= 225.0 {
 			s.method = 'd'
 			s.isDeepSpace = true
-			tc := 0.0
+			tc := 0.0 // TODO: remove tc
 			var ds commonVars
 			var mv meanVars
 			mv.inclm = s.inclo
-			s.dscom(&mv, &ds, t.epoch, tc)
+			s.dscom(&mv, &ds, tc)
 
 			var dpperVars dpperVars
 			dpperVars.isInit = s.isInit
@@ -1305,7 +1275,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 	const temp4 = 1.5e-12
 
-	var meanVars meanVars
+	var meanVars meanVars // TODO: remove local this var
 	vkmpersec := s.radiusearthkm * s.xke / 60.0
 
 	/* --------------------- clear sgp4 error flag ----------------- */
@@ -1351,8 +1321,8 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		// sgp4fix add return
 		return errors.New("nm <= 0.0")
 	}
-	am := math.Pow(s.xke/meanVars.nm, x2o3) * tempa * tempa
-	meanVars.nm = s.xke / math.Pow(am, 1.5)
+	meanVars.am = math.Pow(s.xke/meanVars.nm, x2o3) * tempa * tempa
+	meanVars.nm = s.xke / math.Pow(meanVars.am, 1.5)
 	meanVars.em -= tempe
 
 	// fix tolerance for error recognition
@@ -1377,11 +1347,11 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	meanVars.mm = math.Mod(xlm-meanVars.argpm-meanVars.nodem, twoPi)
 
 	// sgp4fix recover singly averaged mean elements
-	s.am = am
+	s.am = meanVars.am
 	s.em = meanVars.em
-	s.im = meanVars.inclm
-	s.Om = meanVars.nodem
-	s.om = meanVars.argpm
+	s.inclm = meanVars.inclm
+	s.nodem = meanVars.nodem
+	s.argpm = meanVars.argpm
 	s.mm = meanVars.mm
 	s.nm = meanVars.nm
 
@@ -1440,7 +1410,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		}
 	}
 	axnl := ep * math.Cos(argpp)
-	temp = 1.0 / (am * (1.0 - ep*ep))
+	temp = 1.0 / (s.am * (1.0 - ep*ep))
 	aynl := ep*math.Sin(argpp) + temp*s.aycof
 	xl := mp + argpp + nodep + temp*s.xlcof*axnl
 
@@ -1473,19 +1443,19 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	ecose := axnl*coseo1 + aynl*sineo1
 	esine := axnl*sineo1 - aynl*coseo1
 	el2 := axnl*axnl + aynl*aynl
-	pl := am * (1.0 - el2)
+	pl := s.am * (1.0 - el2)
 	if pl < 0.0 {
 		s.error = 4
 		// sgp4fix add return
 		return errors.New("pl < 0.0")
 	}
-	rl := am * (1.0 - ecose)
-	rdotl := math.Sqrt(am) * esine / rl
+	rl := s.am * (1.0 - ecose)
+	rdotl := math.Sqrt(s.am) * esine / rl
 	rvdotl := math.Sqrt(pl) / rl
 	betal := math.Sqrt(1.0 - el2)
 	temp = esine / (1.0 + betal)
-	sinu := am / rl * (sineo1 - aynl - axnl*temp)
-	cosu := am / rl * (coseo1 - axnl + aynl*temp)
+	sinu := s.am / rl * (sineo1 - aynl - axnl*temp)
+	cosu := s.am / rl * (coseo1 - axnl + aynl*temp)
 	su := math.Atan2(sinu, cosu)
 	sin2u := (cosu + cosu) * sinu
 	cos2u := 1.0 - 2.0*sinu*sinu

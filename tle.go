@@ -11,25 +11,25 @@ import (
 
 //Tle TLE record container
 type Tle struct {
-	class   byte
-	cs1     int
-	cs2     int
-	design  string
-	elsetn  int
-	ephtype int
-	epoch   float64
-	revn    int
-	satn    int // catalog number
-	title   string
-	xargpo  float64
-	xbstar  float64
-	xecco   float64
-	xinclo  float64
-	xmo     float64
-	xnddot  float64
-	xndot   float64
-	xno     float64 // mean motion
-	xnodeo  float64
+	/* Auxiliary fields */
+	class   byte   // Classification (U=Unclassified, C=Classified, S=Secret)
+	design  string // International Designator YYNNNAAA (YY - launch year, NNN - launch number of the year, AAA - piece of the launch)
+	elsetn  int    // Element set number. Incremented when a new TLE is generated for this object
+	ephtype int    // Ephemeris type (internal use only - always zero in distributed TLE data)
+	revnum  int    // Revolution number at epoch
+	satnum  int    // Satellite catalog number
+	title   string // Title line, length 24
+	/* Orbit parameters */
+	argpo float64 // Argument of Perigee
+	bstar float64 // Drag Term aka Radiation Pressure Coefficient or BSTAR
+	ecco  float64 // Eccentricity
+	epoch float64 // Epoch ???
+	inclo float64 // Inclination
+	mo    float64 // Mean Anomaly
+	nddot float64 // Second Derivative of Mean Motion
+	ndot  float64 // First Derivative of Mean Motion aka the Ballistic Coefficient
+	no    float64 // Mean Motion
+	nodeo float64 // Right Ascension of the Ascending Node
 }
 
 func days2mdhms(year int, days float64) (
@@ -105,7 +105,7 @@ func LoadTle(fileName string) ([]*Tle, error) {
 		} else if len(line) >= 69 {
 			switch line[0] {
 			case '1':
-				t.satn, err = strconv.Atoi(line[2:7])
+				t.satnum, err = strconv.Atoi(line[2:7])
 				t.class = line[7]
 				t.design = line[9:17]
 				year, _ := strconv.Atoi(line[18:20])
@@ -117,37 +117,37 @@ func LoadTle(fileName string) ([]*Tle, error) {
 				days, _ := strconv.ParseFloat(line[20:32], 64)
 				jd, jdFrac := jday(year, days)
 				t.epoch = jd + jdFrac - 2433281.5
-				t.xndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
-				t.xnddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
-				t.xbstar, err = strconv.ParseFloat(strings.TrimSpace(line[53:54]+"."+line[54:59]+"e"+line[59:61]), 64)
+				t.ndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
+				t.nddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
+				t.bstar, err = strconv.ParseFloat(strings.TrimSpace(line[53:54]+"."+line[54:59]+"e"+line[59:61]), 64)
 				t.ephtype, err = strconv.Atoi(line[62:63])
 				t.elsetn, err = strconv.Atoi(strings.TrimSpace(line[64:68]))
-				t.cs1, err = strconv.Atoi(line[68:69])
+				// cs1, err = strconv.Atoi(line[68:69])
 
-				t.xndot /= xpdotp * 1440.0
-				t.xnddot /= xpdotp * 1440.0 * 1440.0
+				t.ndot /= xpdotp * 1440.0
+				t.nddot /= xpdotp * 1440.0 * 1440.0
 
 				lineFirstOk = true
 				lineSecondOk = false
 			case '2':
 				satn, _ := strconv.Atoi(line[2:7])
-				if satn != t.satn {
-					fmt.Printf("different satn %d != %d\n", satn, t.satn)
+				if satn != t.satnum {
+					fmt.Printf("different satn %d != %d\n", satn, t.satnum)
 				}
-				t.xinclo, err = strconv.ParseFloat(strings.TrimSpace(line[8:16]), 64)
-				t.xnodeo, err = strconv.ParseFloat(strings.TrimSpace(line[17:25]), 64)
-				t.xecco, err = strconv.ParseFloat("."+strings.TrimSpace(line[26:33]), 64)
-				t.xargpo, err = strconv.ParseFloat(strings.TrimSpace(line[34:42]), 64)
-				t.xmo, err = strconv.ParseFloat(strings.TrimSpace(line[43:51]), 64)
-				t.xno, err = strconv.ParseFloat(strings.TrimSpace(line[52:63]), 64)
-				t.revn, err = strconv.Atoi(strings.TrimSpace(line[63:68]))
-				t.cs2, err = strconv.Atoi(line[68:69])
+				t.inclo, err = strconv.ParseFloat(strings.TrimSpace(line[8:16]), 64)
+				t.nodeo, err = strconv.ParseFloat(strings.TrimSpace(line[17:25]), 64)
+				t.ecco, err = strconv.ParseFloat("."+strings.TrimSpace(line[26:33]), 64)
+				t.argpo, err = strconv.ParseFloat(strings.TrimSpace(line[34:42]), 64)
+				t.mo, err = strconv.ParseFloat(strings.TrimSpace(line[43:51]), 64)
+				t.no, err = strconv.ParseFloat(strings.TrimSpace(line[52:63]), 64)
+				t.revnum, err = strconv.Atoi(strings.TrimSpace(line[63:68]))
+				// cs2, err = strconv.Atoi(line[68:69])
 
-				t.xinclo *= deg2rad
-				t.xnodeo *= deg2rad
-				t.xargpo *= deg2rad
-				t.xmo *= deg2rad
-				t.xno /= xpdotp
+				t.inclo *= deg2rad
+				t.nodeo *= deg2rad
+				t.argpo *= deg2rad
+				t.mo *= deg2rad
+				t.no /= xpdotp
 
 				lineSecondOk = true
 			default:
@@ -165,4 +165,25 @@ func LoadTle(fileName string) ([]*Tle, error) {
 	}
 
 	return list, nil
+}
+
+func (dst *Tle) copy(src *Tle) {
+	dst.class = src.class
+	dst.design = src.design
+	dst.elsetn = src.elsetn
+	dst.ephtype = src.ephtype
+	dst.revnum = src.revnum
+	dst.satnum = src.satnum
+	dst.title = src.title
+
+	dst.argpo = src.argpo
+	dst.bstar = src.bstar
+	dst.ecco = src.ecco
+	dst.epoch = src.epoch
+	dst.inclo = src.inclo
+	dst.mo = src.mo
+	dst.nddot = src.nddot
+	dst.ndot = src.ndot
+	dst.no = src.no
+	dst.nodeo = src.nodeo
 }

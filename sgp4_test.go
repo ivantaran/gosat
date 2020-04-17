@@ -167,3 +167,18 @@ func TestReference(t *testing.T) {
 		}
 	}
 }
+
+type A struct {
+	a int
+}
+
+type B struct {
+	A
+	b int
+}
+
+func TestNone(t *testing.T) {
+	// var sat elsetrec
+	// sat.Tle.
+	// var b B
+}
