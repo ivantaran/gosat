@@ -483,7 +483,7 @@ func (s *gravityVars) setGravityVars(whichconst string) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dspace(vars *meanVars, tc float64) {
+func (s *elsetrec) dspace() {
 	const (
 		fasx2 = 0.13130908
 		fasx4 = 2.8843198
@@ -500,13 +500,13 @@ func (s *elsetrec) dspace(vars *meanVars, tc float64) {
 	)
 
 	/* ----------- calculate deep space resonance effects ----------- */
-	theta := math.Mod(s.gsto+tc*rptim, twoPi)
-	vars.em += s.dedt * s.t
+	theta := math.Mod(s.gsto+s.t*rptim, twoPi)
+	s.em += s.dedt * s.t
 
-	vars.inclm += s.didt * s.t
-	vars.argpm += s.domdt * s.t
-	vars.nodem += s.dnodt * s.t
-	vars.mm += s.dmdt * s.t
+	s.inclm += s.didt * s.t
+	s.argpm += s.domdt * s.t
+	s.nodem += s.dnodt * s.t
+	s.mm += s.dmdt * s.t
 
 	//   sgp4fix for negative inclinations
 	//   the following if statement should be commented out
@@ -592,15 +592,15 @@ func (s *elsetrec) dspace(vars *meanVars, tc float64) {
 			}
 		}
 
-		vars.nm = s.xni + xndt*ft + xnddt*ft*ft*0.5
+		s.nm = s.xni + xndt*ft + xnddt*ft*ft*0.5
 		xl := s.xli + xldot*ft + xndt*ft*ft*0.5
 		if s.irez != 1 {
-			vars.mm = xl - 2.0*vars.nodem + 2.0*theta
+			s.mm = xl - 2.0*s.nodem + 2.0*theta
 		} else {
-			vars.mm = xl - vars.nodem - vars.argpm + theta
+			s.mm = xl - s.nodem - s.argpm + theta
 		}
-		dndt := vars.nm - s.noUnkozai
-		vars.nm = s.noUnkozai + dndt
+		dndt := s.nm - s.noUnkozai
+		s.nm = s.noUnkozai + dndt
 	}
 }
 
@@ -632,6 +632,7 @@ func (s *elsetrec) dscom(mv *meanVars, ds *commonVars, tc float64) {
 		zsings = -0.98088458
 	)
 
+	mv.inclm = s.inclo
 	mv.nm = s.noUnkozai
 	mv.em = s.ecco
 	ds.snodm = math.Sin(s.nodeo)
@@ -859,7 +860,7 @@ func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, tc, xpido
 	/* ----------- calculate deep space resonance effects -------- */
 	theta := math.Mod(s.gsto+tc*rptim, twoPi)
 	mv.em += s.dedt * s.t
-	mv.inclm += s.didt * s.t
+	mv.inclm += s.didt * s.t // TODO: these calculations aren't used further
 	mv.argpm += s.domdt * s.t
 	mv.nodem += s.dnodt * s.t
 	mv.mm += s.dmdt * s.t
@@ -1185,12 +1186,11 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 			tc := 0.0 // TODO: remove tc
 			var ds commonVars
 			var mv meanVars
-			mv.inclm = s.inclo
 			s.dscom(&mv, &ds, tc)
 
 			var dpperVars dpperVars
 			dpperVars.isInit = s.isInit
-			dpperVars.inclo = mv.inclm
+			dpperVars.inclo = s.inclo
 			dpperVars.ep = s.ecco
 			dpperVars.inclp = s.inclo
 			dpperVars.nodep = s.nodeo
@@ -1275,7 +1275,7 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	// 1.5 e-12, so the threshold was changed to 1.5e-12 for consistency
 	const temp4 = 1.5e-12
 
-	var meanVars meanVars // TODO: remove local this var
+	// var meanVars meanVars // TODO: remove local this var
 	vkmpersec := s.radiusearthkm * s.xke / 60.0
 
 	/* --------------------- clear sgp4 error flag ----------------- */
@@ -1286,10 +1286,10 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	xmdf := s.mo + s.mdot*s.t
 	argpdf := s.argpo + s.argpdot*s.t
 	nodedf := s.nodeo + s.nodedot*s.t
-	meanVars.argpm = argpdf
-	meanVars.mm = xmdf
+	s.argpm = argpdf
+	s.mm = xmdf
 	t2 := s.t * s.t
-	meanVars.nodem = nodedf + s.nodecf*t2
+	s.nodem = nodedf + s.nodecf*t2
 	tempa := 1.0 - s.cc1*s.t
 	tempe := s.bstar * s.cc4 * s.t
 	templ := s.t2cof * t2
@@ -1300,71 +1300,71 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 		delmtemp := 1.0 + s.eta*math.Cos(xmdf)
 		delm := s.xmcof * (delmtemp*delmtemp*delmtemp - s.delmo)
 		temp := delomg + delm
-		meanVars.mm = xmdf + temp
-		meanVars.argpm = argpdf - temp
+		s.mm = xmdf + temp
+		s.argpm = argpdf - temp
 		t3 := t2 * s.t
 		t4 := t3 * s.t
 		tempa -= s.d2*t2 + s.d3*t3 + s.d4*t4
-		tempe += s.bstar * s.cc5 * (math.Sin(meanVars.mm) - s.sinmao)
+		tempe += s.bstar * s.cc5 * (math.Sin(s.mm) - s.sinmao)
 		templ += s.t3cof*t3 + t4*(s.t4cof+s.t*s.t5cof)
 	}
 
-	meanVars.nm = s.noUnkozai
-	meanVars.em = s.ecco
-	meanVars.inclm = s.inclo
+	s.nm = s.noUnkozai
+	s.em = s.ecco
+	s.inclm = s.inclo
 	if s.method == 'd' {
-		s.dspace(&meanVars, s.t)
+		s.dspace()
 	}
 
-	if meanVars.nm <= 0.0 {
+	if s.nm <= 0.0 {
 		s.error = 2
 		// sgp4fix add return
 		return errors.New("nm <= 0.0")
 	}
-	meanVars.am = math.Pow(s.xke/meanVars.nm, x2o3) * tempa * tempa
-	meanVars.nm = s.xke / math.Pow(meanVars.am, 1.5)
-	meanVars.em -= tempe
+	s.am = math.Pow(s.xke/s.nm, x2o3) * tempa * tempa
+	s.nm = s.xke / math.Pow(s.am, 1.5)
+	s.em -= tempe
 
 	// fix tolerance for error recognition
 	// sgp4fix am is fixed from the previous nm check
-	if (meanVars.em >= 1.0) || (meanVars.em < -0.001) /* || (am < 0.95)*/ {
+	if (s.em >= 1.0) || (s.em < -0.001) /* || (am < 0.95)*/ {
 		s.error = 1
 		// sgp4fix to return if there is an error in eccentricity
 		return errors.New("(em >= 1.0) || (em < -0.001)")
 	}
 	// sgp4fix fix tolerance to avoid a divide by zero
-	if meanVars.em < 1.0e-6 {
-		meanVars.em = 1.0e-6
+	if s.em < 1.0e-6 {
+		s.em = 1.0e-6
 	}
-	meanVars.mm += s.noUnkozai * templ
-	xlm := meanVars.mm + meanVars.argpm + meanVars.nodem
-	emsq := meanVars.em * meanVars.em
+	s.mm += s.noUnkozai * templ
+	xlm := s.mm + s.argpm + s.nodem
+	emsq := s.em * s.em
 	temp := 1.0 - emsq
 
-	meanVars.nodem = math.Mod(meanVars.nodem, twoPi)
-	meanVars.argpm = math.Mod(meanVars.argpm, twoPi)
+	s.nodem = math.Mod(s.nodem, twoPi)
+	s.argpm = math.Mod(s.argpm, twoPi)
 	xlm = math.Mod(xlm, twoPi)
-	meanVars.mm = math.Mod(xlm-meanVars.argpm-meanVars.nodem, twoPi)
+	s.mm = math.Mod(xlm-s.argpm-s.nodem, twoPi)
 
 	// sgp4fix recover singly averaged mean elements
-	s.am = meanVars.am
-	s.em = meanVars.em
-	s.inclm = meanVars.inclm
-	s.nodem = meanVars.nodem
-	s.argpm = meanVars.argpm
-	s.mm = meanVars.mm
-	s.nm = meanVars.nm
+	// s.am = s.am // TODO
+	// s.em = s.em
+	// s.inclm = s.inclm
+	// s.nodem = s.nodem
+	// s.argpm = s.argpm
+	// s.mm = s.mm
+	// s.nm = s.nm
 
 	/* ----------------- compute extra mean quantities ------------- */
-	sinim := math.Sin(meanVars.inclm)
-	cosim := math.Cos(meanVars.inclm)
+	sinim := math.Sin(s.inclm)
+	cosim := math.Cos(s.inclm)
 
 	/* -------------------- add lunar-solar periodics -------------- */
-	ep := meanVars.em
-	xincp := meanVars.inclm
-	argpp := meanVars.argpm
-	nodep := meanVars.nodem
-	mp := meanVars.mm
+	ep := s.em
+	xincp := s.inclm
+	argpp := s.argpm
+	nodep := s.nodem
+	mp := s.mm
 	sinip := sinim
 	cosip := cosim
 
@@ -1474,8 +1474,8 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	su = su - 0.25*temp2*s.x7thm1*sin2u
 	xnode := nodep + 1.5*temp2*cosip*sin2u
 	xinc := xincp + 1.5*temp2*cosip*sinip*cos2u
-	mvt := rdotl - meanVars.nm*temp1*s.x1mth2*sin2u/s.xke
-	rvdot := rvdotl + meanVars.nm*temp1*(s.x1mth2*cos2u+1.5*s.con41)/s.xke
+	mvt := rdotl - s.nm*temp1*s.x1mth2*sin2u/s.xke
+	rvdot := rvdotl + s.nm*temp1*(s.x1mth2*cos2u+1.5*s.con41)/s.xke
 
 	/* --------------------- orientation vectors ------------------- */
 	sinsu := math.Sin(su)
