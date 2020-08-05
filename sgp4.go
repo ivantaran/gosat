@@ -115,11 +115,11 @@ type elsetrec struct {
 
 	// TODO: remove unused fields below
 	// Additional elements to capture relevant TLE and object information:
-	dia_mm      int     //RSO dia in mm
-	period_sec  float64 //Period in seconds
-	active      bool    //"Active S/C" flag (0=n, 1=y)
-	not_orbital bool    //"Orbiting S/C" flag (0=n, 1=y)
-	rcs_m2      float64 //"RCS (m^2)" storage
+	// dia_mm      int     //RSO dia in mm
+	// period_sec  float64 //Period in seconds
+	// active      bool    //"Active S/C" flag (0=n, 1=y)
+	// not_orbital bool    //"Orbiting S/C" flag (0=n, 1=y)
+	// rcs_m2      float64 //"RCS (m^2)" storage
 }
 
 type initlVars struct {
