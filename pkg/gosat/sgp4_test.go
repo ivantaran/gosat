@@ -70,7 +70,7 @@ func TestInit(t *testing.T) {
 
 func TestTleLoad(t *testing.T) {
 	var sat elsetrec
-	tleList, err := LoadTle("SGP4-VER.TLE")
+	tleList, err := LoadTle("./testdata/SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -119,7 +119,7 @@ func TestReference(t *testing.T) {
 	var r [6]float64
 	gravConst := "wgs72"
 	treshold := 1.0e-8
-	testFileName := "reftest_java.out"
+	testFileName := "./testdata/reftest_java.out"
 	// testFileName := "reftest_cpp.out"
 	testMap, err := loadRefTest(testFileName)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestReference(t *testing.T) {
 		}
 	}
 	var sat elsetrec
-	tleList, err := LoadTle("SGP4-VER.TLE")
+	tleList, err := LoadTle("./testdata/SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)
 	} else {

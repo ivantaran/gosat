@@ -62,20 +62,21 @@ func loadList(path string) error {
 	var list tleList
 	json.Unmarshal(bytes, &list)
 
-	fmt.Println(os.UserHomeDir())
-	fmt.Println(os.UserConfigDir())
-	fmt.Println(os.UserCacheDir())
-
-	dir, err := ioutil.TempDir("", "gosat")
+	dir, err := os.UserCacheDir()
 	if err != nil {
 		log.Fatal(err)
 	}
+	dir = filepath.Join(dir, "gosat")
 
 	for i := 0; i < len(list.TleList); i++ {
 		fmt.Println(list.TleList[i])
 		file := filepath.Base(list.TleList[i])
 		file = filepath.Join(dir, file)
-		// downloadFile(list.TleList[i], file)
+		err := downloadFile(list.TleList[i], file)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 	}
 
 	return nil

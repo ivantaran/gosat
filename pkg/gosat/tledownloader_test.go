@@ -7,7 +7,7 @@ import (
 
 func TestTleLoadList(t *testing.T) {
 	t.Run("init test", func(t *testing.T) {
-		err := loadList("tlelist.json")
+		err := loadList("./testdata/tlelist.json")
 		if err != nil {
 			fmt.Println(err)
 			t.Fail()
