@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,7 +52,6 @@ func (wc writeCounter) printProgress() {
 func loadList(path string) error {
 	jsonFile, err := os.Open(path)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	defer jsonFile.Close()
@@ -64,7 +62,7 @@ func loadList(path string) error {
 
 	dir, err := os.UserCacheDir()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	dir = filepath.Join(dir, "gosat")
 
@@ -74,7 +72,6 @@ func loadList(path string) error {
 		file = filepath.Join(dir, file)
 		err := downloadFile(list.TleList[i], file)
 		if err != nil {
-			log.Fatal(err)
 			return err
 		}
 	}

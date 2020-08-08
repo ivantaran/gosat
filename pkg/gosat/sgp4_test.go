@@ -73,43 +73,39 @@ func TestTleLoad(t *testing.T) {
 	tleList, err := LoadTle("./testdata/SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)
-	} else {
-		for _, tleItem := range tleList {
-			// if tleItem.satn == 23599 {
-			// 	fmt.Println("OLOLO")
-			// }
-			err = sat.sgp4init("wgs84", tleItem, 'i')
-			switch sat.satnum {
-			case 33333:
-				var r [6]float64
-				err := sat.sgp4(3600.0, r[0:3], r[3:])
-				if err == nil || sat.error != 4 {
-					fmt.Println(*tleItem)
-					t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-				} else {
-					t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-				}
-			case 33334:
-				if err == nil || sat.error != 3 {
-					fmt.Println(*tleItem)
-					t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-				} else {
-					t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-				}
-			// case 33335: Wrong test case
-			// 	var r [6]float64
-			// 	err := sat.sgp4(3600.0, r[0:3], r[3:])
-			// 	if err == nil || sat.error != 3 {
-			// 		fmt.Println(*tleItem)
-			// 		t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-			// 	} else {
-			// 		t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-			// 	}
-			default:
-				if err != nil {
-					fmt.Println(*tleItem)
-					t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
-				}
+	}
+	for _, tleItem := range tleList {
+		err = sat.sgp4init("wgs84", tleItem, 'i')
+		switch sat.satnum {
+		case 33333:
+			var r [6]float64
+			err := sat.sgp4(3600.0, r[0:3], r[3:])
+			if err == nil || sat.error != 4 {
+				fmt.Println(*tleItem)
+				t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
+			} else {
+				t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
+			}
+		case 33334:
+			if err == nil || sat.error != 3 {
+				fmt.Println(*tleItem)
+				t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
+			} else {
+				t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
+			}
+		// case 33335: Wrong test case
+		// 	var r [6]float64
+		// 	err := sat.sgp4(3600.0, r[0:3], r[3:])
+		// 	if err == nil || sat.error != 3 {
+		// 		fmt.Println(*tleItem)
+		// 		t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
+		// 	} else {
+		// 		t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
+		// 	}
+		default:
+			if err != nil {
+				fmt.Println(*tleItem)
+				t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
 			}
 		}
 	}
@@ -133,35 +129,33 @@ func TestReference(t *testing.T) {
 	tleList, err := LoadTle("./testdata/SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)
-	} else {
-		for _, tleItem := range tleList {
-			// err = sat.sgp4init("wgs84", tleItem, 'i')
-			err = sat.sgp4init(gravConst, tleItem, 'i')
-			if coordLineMap, ok := testMap[sat.satnum]; ok {
-				times := make([]float64, 0.0, len(coordLineMap))
-				for time := range coordLineMap {
-					times = append(times, time)
+	}
+	for _, tleItem := range tleList {
+		// err = sat.sgp4init("wgs84", tleItem, 'i')
+		err = sat.sgp4init(gravConst, tleItem, 'i')
+		if coordLineMap, ok := testMap[sat.satnum]; ok {
+			times := make([]float64, 0.0, len(coordLineMap))
+			for time := range coordLineMap {
+				times = append(times, time)
+			}
+			sort.Float64s(times)
+			for _, time := range times {
+				coord := coordLineMap[time]
+				sat.sgp4(time, r[0:3], r[3:])
+				ok := true
+				for i := 0; i < len(r); i++ {
+					delta := coord[i] - r[i]
+					if math.Abs(delta) > treshold {
+						ok = false
+						break
+					}
 				}
-				sort.Float64s(times)
-				for _, time := range times {
-					coord := coordLineMap[time]
-					sat.sgp4(time, r[0:3], r[3:])
-					ok := true
+				if !ok {
+					fmt.Printf("satnum:%d time:%0.1f\n", sat.satnum, time)
 					for i := 0; i < len(r); i++ {
-						delta := coord[i] - r[i]
-						if math.Abs(delta) > treshold {
-							ok = false
-							break
-						}
+						fmt.Printf("\t%+0.4e %+0.4e %+0.4e\n", coord[i], r[i], coord[i]-r[i])
 					}
-					if !ok {
-						fmt.Printf("satnum:%d time:%0.1f\n", sat.satnum, time)
-						for i := 0; i < len(r); i++ {
-							fmt.Printf("\t%+0.4e %+0.4e %+0.4e\n", coord[i], r[i], coord[i]-r[i])
-						}
-						// t.Fatal()
-						t.Error()
-					}
+					t.Error()
 				}
 			}
 		}
