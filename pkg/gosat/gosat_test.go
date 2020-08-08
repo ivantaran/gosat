@@ -19,8 +19,8 @@ func TestLoadIDList(t *testing.T) {
 	defer file.Close()
 
 	bytes, _ := ioutil.ReadAll(file)
-
-	err = LoadIDList(bytes, tleList)
+	var gs Gosat
+	err = gs.loadIDList(bytes, tleList)
 	if err != nil {
 		t.Error(err)
 	}

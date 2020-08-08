@@ -82,7 +82,7 @@ func jday(year int, days float64) (jd float64, jdFrac float64) {
 }
 
 // LoadTle load TLE data
-func LoadTle(fileName string) ([]*Tle, error) {
+func LoadTle(fileName string) ([]Tle, error) {
 	const xpdotp = 1440.0 / twoPi
 
 	file, err := os.Open(fileName)
@@ -96,8 +96,8 @@ func LoadTle(fileName string) ([]*Tle, error) {
 
 	lineFirstOk := false
 	lineSecondOk := false
-	var list []*Tle
-	t := new(Tle)
+	var list []Tle
+	t := Tle{}
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) <= 0 || line[0] == '#' {
@@ -160,7 +160,7 @@ func LoadTle(fileName string) ([]*Tle, error) {
 			lineFirstOk = false
 			lineSecondOk = false
 			list = append(list, t)
-			t = new(Tle)
+			// t := Tle{}
 		}
 	}
 

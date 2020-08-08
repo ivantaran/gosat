@@ -75,20 +75,20 @@ func TestTleLoad(t *testing.T) {
 		t.Error(err)
 	}
 	for _, tleItem := range tleList {
-		err = sat.sgp4init("wgs84", tleItem, 'i')
+		err = sat.sgp4init("wgs84", &tleItem, 'i')
 		switch sat.satnum {
 		case 33333:
 			var r [6]float64
 			err := sat.sgp4(3600.0, r[0:3], r[3:])
 			if err == nil || sat.error != 4 {
-				fmt.Println(*tleItem)
+				fmt.Println(tleItem)
 				t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
 			} else {
 				t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
 			}
 		case 33334:
 			if err == nil || sat.error != 3 {
-				fmt.Println(*tleItem)
+				fmt.Println(tleItem)
 				t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
 			} else {
 				t.Logf("[ OK ] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
@@ -104,7 +104,7 @@ func TestTleLoad(t *testing.T) {
 		// 	}
 		default:
 			if err != nil {
-				fmt.Println(*tleItem)
+				fmt.Println(tleItem)
 				t.Errorf("[FAIL] errnum:%d satnum:%d \"%s\"", sat.error, sat.satnum, err)
 			}
 		}
@@ -132,7 +132,7 @@ func TestReference(t *testing.T) {
 	}
 	for _, tleItem := range tleList {
 		// err = sat.sgp4init("wgs84", tleItem, 'i')
-		err = sat.sgp4init(gravConst, tleItem, 'i')
+		err = sat.sgp4init(gravConst, &tleItem, 'i')
 		if coordLineMap, ok := testMap[sat.satnum]; ok {
 			times := make([]float64, 0.0, len(coordLineMap))
 			for time := range coordLineMap {

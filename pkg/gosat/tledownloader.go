@@ -66,11 +66,11 @@ func loadList(path string) error {
 	}
 	dir = filepath.Join(dir, "gosat")
 
-	for i := 0; i < len(list.TleList); i++ {
-		fmt.Println(list.TleList[i])
-		file := filepath.Base(list.TleList[i])
+	for _, url := range list.TleList {
+		fmt.Println(url)
+		file := filepath.Base(url)
 		file = filepath.Join(dir, file)
-		err := downloadFile(list.TleList[i], file)
+		err := downloadFile(url, file)
 		if err != nil {
 			return err
 		}
