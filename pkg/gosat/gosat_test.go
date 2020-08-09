@@ -1,9 +1,12 @@
 package gosat
 
 import (
+	"bufio"
 	"io/ioutil"
+	"net"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestLoadIDList(t *testing.T) {
@@ -23,5 +26,41 @@ func TestLoadIDList(t *testing.T) {
 	err = gs.loadIDList(bytes, tleList)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestServerProtectsAgaintSlowloris(t *testing.T) {
+	gs := Gosat{
+		Addr:         ":8080",
+		IdleTimeout:  5 * time.Second,
+		MaxReadBytes: 1000,
+	}
+	go gs.ListenAndServe()
+
+	time.Sleep(1 * time.Second) // hack to wait for server to start
+	conn, err := net.Dial("tcp", "0.0.0.0:8080")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// We slowly write to simulate a Slowloris. We should fail in one second
+	// because we don't satisfy the application level requirement of sending a complete request (with newlines)
+	// within 1 second
+	w := bufio.NewWriter(conn)
+	r := bufio.NewReader(conn)
+	for {
+		_, err = w.WriteString("ok\n")
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.Flush()
+		time.Sleep(200 * time.Millisecond)
+		line, _, err := r.ReadLine()
+		if err != nil {
+			if err.Error() != "EOF" {
+				t.Error(err)
+			}
+		} else if string(line) == "OK" {
+			t.Skip()
+		}
 	}
 }
