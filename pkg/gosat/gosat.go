@@ -39,7 +39,7 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 
 	tleMap := make(map[int]Tle)
 	for _, t := range tle {
-		id := t.satnum
+		id := t.Satnum
 		tleMap[id] = t
 	}
 
@@ -60,10 +60,8 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 }
 
 func (gs *Gosat) update(t float64) {
-	r := []float64{0.0, 0.0, 0.0}
-	v := []float64{0.0, 0.0, 0.0}
 	for _, sat := range gs.satMap {
-		sat.sgp4(t, r, v)
+		sat.sgp4(t)
 	}
 }
 

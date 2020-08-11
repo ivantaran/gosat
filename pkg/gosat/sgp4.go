@@ -112,7 +112,7 @@ type elsetrec struct {
 	gravityVars
 	meanVars
 	Tle
-
+	Coords [6]float64
 	// TODO: remove unused fields below
 	// Additional elements to capture relevant TLE and object information:
 	// dia_mm      int     //RSO dia in mm
@@ -1226,9 +1226,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	/* finally propogate to zero epoch to initialize all others. */
 	// sgp4fix take out check to let satellites process until they are actually below earth surface
 	//       if(satrec.error == 0)
-	var r [6]float64
-	err := s.sgp4(0.0, r[0:3], r[3:])
-
+	err := s.sgp4(0.0)
 	s.isInit = false
 
 	return err
@@ -1268,7 +1266,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
 
-func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
+func (s *elsetrec) sgp4(tsince float64) error {
 	/* ------------------ set mathematical constants --------------- */
 	// sgp4fix divisor for divide by zero check on inclination
 	// the old check used 1.0 + cos(pi-1.0e-9), but then compared it to
@@ -1478,12 +1476,12 @@ func (s *elsetrec) sgp4(tsince float64, r []float64, v []float64) error {
 	vz := sini * cossu
 
 	/* --------- position and velocity (in km and km/sec) ---------- */
-	r[0] = mrt * ux * s.radiusearthkm
-	r[1] = mrt * uy * s.radiusearthkm
-	r[2] = mrt * uz * s.radiusearthkm
-	v[0] = (mvt*ux + rvdot*vx) * vkmpersec
-	v[1] = (mvt*uy + rvdot*vy) * vkmpersec
-	v[2] = (mvt*uz + rvdot*vz) * vkmpersec
+	s.Coords[0] = mrt * ux * s.radiusearthkm
+	s.Coords[1] = mrt * uy * s.radiusearthkm
+	s.Coords[2] = mrt * uz * s.radiusearthkm
+	s.Coords[3] = (mvt*ux + rvdot*vx) * vkmpersec
+	s.Coords[4] = (mvt*uy + rvdot*vy) * vkmpersec
+	s.Coords[5] = (mvt*uz + rvdot*vz) * vkmpersec
 
 	if mrt < 1.0 {
 		s.error = 6

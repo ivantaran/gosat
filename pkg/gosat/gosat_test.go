@@ -2,6 +2,7 @@ package gosat
 
 import (
 	"bufio"
+	"encoding/json"
 	"io/ioutil"
 	"net"
 	"os"
@@ -27,6 +28,12 @@ func TestLoadIDList(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	bytes, err = json.Marshal(gs.satMap)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(string(bytes))
 }
 
 func TestServerProtectsAgaintSlowloris(t *testing.T) {
@@ -63,4 +70,18 @@ func TestServerProtectsAgaintSlowloris(t *testing.T) {
 			t.Skip()
 		}
 	}
+}
+
+func TestMarshalSatellite(t *testing.T) {
+	tleList, err := LoadTle("testdata/SGP4-VER.TLE")
+	if err != nil {
+		t.Error(err)
+	}
+	var sat elsetrec
+	err = sat.sgp4init("wgs84", &tleList[0], 'i')
+	bytes, err := json.Marshal(tleList)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(bytes))
 }

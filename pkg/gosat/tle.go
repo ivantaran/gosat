@@ -17,8 +17,8 @@ type Tle struct {
 	elsetn  int    // Element set number. Incremented when a new TLE is generated for this object
 	ephtype int    // Ephemeris type (internal use only - always zero in distributed TLE data)
 	revnum  int    // Revolution number at epoch
-	satnum  int    // Satellite catalog number
-	title   string // Title line, length 24
+	Satnum  int    // Satellite catalog number
+	Title   string // Title line, length 24
 	/* Orbit parameters */
 	argpo float64 // Argument of Perigee
 	bstar float64 // Drag Term aka Radiation Pressure Coefficient or BSTAR
@@ -105,7 +105,7 @@ func LoadTle(fileName string) ([]Tle, error) {
 		} else if len(line) >= 69 {
 			switch line[0] {
 			case '1':
-				t.satnum, err = strconv.Atoi(line[2:7])
+				t.Satnum, err = strconv.Atoi(line[2:7])
 				t.class = line[7]
 				t.design = line[9:17]
 				year, _ := strconv.Atoi(line[18:20])
@@ -131,8 +131,8 @@ func LoadTle(fileName string) ([]Tle, error) {
 				lineSecondOk = false
 			case '2':
 				satn, _ := strconv.Atoi(line[2:7])
-				if satn != t.satnum {
-					fmt.Printf("different satn %d != %d\n", satn, t.satnum)
+				if satn != t.Satnum {
+					fmt.Printf("different satn %d != %d\n", satn, t.Satnum)
 				}
 				t.inclo, err = strconv.ParseFloat(strings.TrimSpace(line[8:16]), 64)
 				t.nodeo, err = strconv.ParseFloat(strings.TrimSpace(line[17:25]), 64)
@@ -154,7 +154,7 @@ func LoadTle(fileName string) ([]Tle, error) {
 				break
 			}
 		} else {
-			t.title = strings.TrimSpace(line)
+			t.Title = strings.TrimSpace(line)
 		}
 		if lineFirstOk && lineSecondOk {
 			lineFirstOk = false
@@ -173,8 +173,8 @@ func (dst *Tle) copy(src *Tle) {
 	dst.elsetn = src.elsetn
 	dst.ephtype = src.ephtype
 	dst.revnum = src.revnum
-	dst.satnum = src.satnum
-	dst.title = src.title
+	dst.Satnum = src.Satnum
+	dst.Title = src.Title
 
 	dst.argpo = src.argpo
 	dst.bstar = src.bstar
