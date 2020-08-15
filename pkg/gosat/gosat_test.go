@@ -55,7 +55,7 @@ func TestServerProtectsAgaintSlowloris(t *testing.T) {
 	w := bufio.NewWriter(conn)
 	r := bufio.NewReader(conn)
 	for {
-		_, err = w.WriteString("ok\n")
+		_, err = w.WriteString("{}\n")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestServerProtectsAgaintSlowloris(t *testing.T) {
 			if err.Error() != "EOF" {
 				t.Error(err)
 			}
-		} else if string(line) == "OK" {
+		} else if string(line) == "null" {
 			t.Skip()
 		}
 	}

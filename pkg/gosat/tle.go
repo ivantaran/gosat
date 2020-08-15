@@ -167,6 +167,93 @@ func LoadTle(fileName string) ([]Tle, error) {
 	return list, nil
 }
 
+// LoadTleAsMap load TLE data
+func LoadTleAsMap(fileName string) (map[int]Tle, error) {
+	const xpdotp = 1440.0 / twoPi
+
+	file, err := os.Open(fileName)
+
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	tleMap := make(map[int]Tle)
+	scanner := bufio.NewScanner(file)
+
+	lineFirstOk := false
+	lineSecondOk := false
+
+	t := Tle{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) <= 0 || line[0] == '#' {
+			continue
+		} else if len(line) >= 69 {
+			switch line[0] {
+			case '1':
+				t.Satnum, err = strconv.Atoi(line[2:7])
+				t.class = line[7]
+				t.design = line[9:17]
+				year, _ := strconv.Atoi(line[18:20])
+				if year < 57 {
+					year += 2000 // TODO aged units
+				} else {
+					year += 1900
+				}
+				days, _ := strconv.ParseFloat(line[20:32], 64)
+				jd, jdFrac := jday(year, days)
+				t.epoch = jd + jdFrac - 2433281.5
+				t.ndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
+				t.nddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
+				t.bstar, err = strconv.ParseFloat(strings.TrimSpace(line[53:54]+"."+line[54:59]+"e"+line[59:61]), 64)
+				t.ephtype, err = strconv.Atoi(line[62:63])
+				t.elsetn, err = strconv.Atoi(strings.TrimSpace(line[64:68]))
+				// cs1, err = strconv.Atoi(line[68:69])
+
+				t.ndot /= xpdotp * 1440.0
+				t.nddot /= xpdotp * 1440.0 * 1440.0
+
+				lineFirstOk = true
+				lineSecondOk = false
+			case '2':
+				satn, _ := strconv.Atoi(line[2:7])
+				if satn != t.Satnum {
+					fmt.Printf("different satn %d != %d\n", satn, t.Satnum)
+				}
+				t.inclo, err = strconv.ParseFloat(strings.TrimSpace(line[8:16]), 64)
+				t.nodeo, err = strconv.ParseFloat(strings.TrimSpace(line[17:25]), 64)
+				t.ecco, err = strconv.ParseFloat("."+strings.TrimSpace(line[26:33]), 64)
+				t.argpo, err = strconv.ParseFloat(strings.TrimSpace(line[34:42]), 64)
+				t.mo, err = strconv.ParseFloat(strings.TrimSpace(line[43:51]), 64)
+				t.no, err = strconv.ParseFloat(strings.TrimSpace(line[52:63]), 64)
+				t.revnum, err = strconv.Atoi(strings.TrimSpace(line[63:68]))
+				// cs2, err = strconv.Atoi(line[68:69])
+
+				t.inclo *= deg2rad
+				t.nodeo *= deg2rad
+				t.argpo *= deg2rad
+				t.mo *= deg2rad
+				t.no /= xpdotp
+
+				lineSecondOk = true
+			default:
+				break
+			}
+		} else {
+			t.Title = strings.TrimSpace(line)
+		}
+		if lineFirstOk && lineSecondOk {
+			lineFirstOk = false
+			lineSecondOk = false
+			tleMap[t.Satnum] = t
+			// t := Tle{}
+		}
+	}
+
+	return tleMap, nil
+}
+
 func (dst *Tle) copy(src *Tle) {
 	dst.class = src.class
 	dst.design = src.design

@@ -3,9 +3,11 @@ package gosat
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
-	"strings"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -20,16 +22,17 @@ type Gosat struct {
 	mu           sync.Mutex
 	MaxReadBytes int64
 
-	satMap map[int]elsetrec
+	satMap map[int]*elsetrec
+	tleMap map[int]Tle
 }
 
-type idList struct {
+type inputStruct struct {
 	IDList []int `json:"idList"`
 }
 
 // loadIDList Load ID's List
 func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
-	var list idList
+	var list inputStruct
 
 	err := json.Unmarshal(bytes, &list)
 	if err != nil {
@@ -43,7 +46,7 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 		tleMap[id] = t
 	}
 
-	gs.satMap = make(map[int]elsetrec)
+	gs.satMap = make(map[int]*elsetrec)
 	for _, id := range list.IDList {
 		if t, ok := tleMap[id]; ok {
 			var sat elsetrec
@@ -52,17 +55,39 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 				log.Fatal(err)
 				return err
 			}
-			gs.satMap[id] = sat
+			gs.satMap[id] = &sat
 		}
 	}
 
 	return nil
 }
 
-func (gs *Gosat) update(t float64) {
-	for _, sat := range gs.satMap {
-		sat.sgp4(t)
+func (gs *Gosat) updateIDList(list []int) error {
+	gs.satMap = make(map[int]*elsetrec)
+	for _, id := range list {
+		if t, ok := gs.tleMap[id]; ok {
+			var sat elsetrec
+			err := sat.sgp4init("wgs84", &t, 'i')
+			if err != nil {
+				log.Fatal(err)
+				return err
+			}
+			gs.satMap[id] = &sat
+		}
 	}
+	return nil
+}
+
+func (gs *Gosat) update(t float64) (bytes []byte, err error) {
+	fmt.Println(t)
+	for _, sat := range gs.satMap {
+		err = sat.sgp4(0.0)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	bytes, err = json.Marshal(gs.satMap)
+	return
 }
 
 // ListenAndServe TODO comment me
@@ -111,6 +136,15 @@ func (gs *Gosat) trackConn(c *conn) {
 	gs.conns[c] = struct{}{}
 }
 
+func (gs *Gosat) parseInput(bytes []byte) (err error) {
+	var iStruct inputStruct
+	err = json.Unmarshal(bytes, &iStruct)
+	if len(iStruct.IDList) > 0 {
+		gs.updateIDList(iStruct.IDList)
+	}
+	return
+}
+
 func (gs *Gosat) handle(c *conn) error {
 	defer func() {
 		log.Printf("closing connection from %v", c.RemoteAddr())
@@ -137,7 +171,13 @@ func (gs *Gosat) handle(c *conn) error {
 				}
 				return nil
 			}
-			w.WriteString(strings.ToUpper(scanr.Text()) + "\n")
+
+			bytes, err := gs.update(float64(time.Now().Unix()))
+			if err != nil {
+				return err
+			}
+			gs.parseInput(scanr.Bytes())
+			w.Write(bytes)
 			w.Flush()
 			deadline = time.After(c.IdleTimeout)
 		}
@@ -167,4 +207,17 @@ func (gs *Gosat) Shutdown() {
 			return
 		}
 	}
+}
+
+// LoadTle TODO comment me
+func (gs *Gosat) LoadTle() (err error) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return err
+	}
+	dir = filepath.Join(dir, "gosat")
+	file := filepath.Join(dir, "stations.txt")
+	gs.tleMap, err = LoadTleAsMap(file)
+	// gs.tleMap, err = LoadTleAsMap("/home/taran/work/gosat/pkg/gosat/testdata/SGP4-VER.TLE")
+	return
 }
