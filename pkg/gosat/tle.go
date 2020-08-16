@@ -7,18 +7,20 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //Tle TLE record container
 type Tle struct {
 	/* Auxiliary fields */
-	class   byte   // Classification (U=Unclassified, C=Classified, S=Secret)
-	design  string // International Designator YYNNNAAA (YY - launch year, NNN - launch number of the year, AAA - piece of the launch)
-	elsetn  int    // Element set number. Incremented when a new TLE is generated for this object
-	ephtype int    // Ephemeris type (internal use only - always zero in distributed TLE data)
-	revnum  int    // Revolution number at epoch
-	Satnum  int    // Satellite catalog number
-	Title   string // Title line, length 24
+	class     byte   // Classification (U=Unclassified, C=Classified, S=Secret)
+	design    string // International Designator YYNNNAAA (YY - launch year, NNN - launch number of the year, AAA - piece of the launch)
+	elsetn    int    // Element set number. Incremented when a new TLE is generated for this object
+	ephtype   int    // Ephemeris type (internal use only - always zero in distributed TLE data)
+	revnum    int    // Revolution number at epoch
+	Satnum    int    // Satellite catalog number
+	Title     string // Title line, length 24
+	Timestamp time.Time
 	/* Orbit parameters */
 	argpo float64 // Argument of Perigee
 	bstar float64 // Drag Term aka Radiation Pressure Coefficient or BSTAR
@@ -63,8 +65,10 @@ func days2mdhms(year int, days float64) (
 	return
 }
 
-func jday(year int, days float64) (jd float64, jdFrac float64) {
+func jday(year int, days float64) (jd float64, jdFrac float64, timestamp time.Time) {
 	mon, day, hr, minute, sec := days2mdhms(year, days)
+	isec, fsec := math.Modf(sec)
+	timestamp = time.Date(year, time.Month(mon), day, hr, minute, int(isec), int(fsec*1.0e9), time.UTC)
 	jd = 367.0*float64(year) -
 		math.Floor((7.0*(float64(year)+math.Floor(float64(mon+9)/12.0)))*0.25) +
 		math.Floor(275.0*float64(mon)/9.0) +
@@ -115,7 +119,8 @@ func LoadTle(fileName string) ([]Tle, error) {
 					year += 1900
 				}
 				days, _ := strconv.ParseFloat(line[20:32], 64)
-				jd, jdFrac := jday(year, days)
+				jd, jdFrac, timestamp := jday(year, days)
+				t.Timestamp = timestamp
 				t.epoch = jd + jdFrac - 2433281.5
 				t.ndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
 				t.nddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
@@ -202,7 +207,8 @@ func LoadTleAsMap(fileName string) (map[int]Tle, error) {
 					year += 1900
 				}
 				days, _ := strconv.ParseFloat(line[20:32], 64)
-				jd, jdFrac := jday(year, days)
+				jd, jdFrac, timestamp := jday(year, days)
+				t.Timestamp = timestamp
 				t.epoch = jd + jdFrac - 2433281.5
 				t.ndot, err = strconv.ParseFloat(strings.TrimSpace(line[33:43]), 64)
 				t.nddot, err = strconv.ParseFloat(strings.TrimSpace(line[44:45]+"."+line[45:50]+"e"+line[50:52]), 64)
@@ -262,6 +268,7 @@ func (dst *Tle) copy(src *Tle) {
 	dst.revnum = src.revnum
 	dst.Satnum = src.Satnum
 	dst.Title = src.Title
+	dst.Timestamp = src.Timestamp
 
 	dst.argpo = src.argpo
 	dst.bstar = src.bstar

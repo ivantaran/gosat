@@ -9,7 +9,7 @@ import (
 func main() {
 	gs := gosat.Gosat{
 		Addr:         ":8080",
-		IdleTimeout:  5 * time.Second,
+		IdleTimeout:  30 * time.Second,
 		MaxReadBytes: 1000,
 	}
 	gs.LoadTle()

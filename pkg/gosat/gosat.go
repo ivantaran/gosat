@@ -81,7 +81,7 @@ func (gs *Gosat) updateIDList(list []int) error {
 func (gs *Gosat) update(t float64) (bytes []byte, err error) {
 	fmt.Println(t)
 	for _, sat := range gs.satMap {
-		err = sat.sgp4(0.0)
+		err = sat.sgp4(t)
 		if err != nil {
 			fmt.Println(err)
 		}
