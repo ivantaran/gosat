@@ -78,10 +78,9 @@ func (gs *Gosat) updateIDList(list []int) error {
 	return nil
 }
 
-func (gs *Gosat) update(t float64) (bytes []byte, err error) {
-	fmt.Println(t)
+func (gs *Gosat) update(time time.Time) (bytes []byte, err error) {
 	for _, sat := range gs.satMap {
-		err = sat.sgp4(t)
+		err = sat.Update(time)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -172,7 +171,7 @@ func (gs *Gosat) handle(c *conn) error {
 				return nil
 			}
 
-			bytes, err := gs.update(float64(time.Now().Unix()))
+			bytes, err := gs.update(time.Now())
 			if err != nil {
 				return err
 			}

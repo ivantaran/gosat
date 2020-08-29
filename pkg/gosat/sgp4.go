@@ -3,6 +3,7 @@ package gosat
 import (
 	"errors"
 	"math"
+	"time"
 )
 
 const (
@@ -1489,4 +1490,11 @@ func (s *elsetrec) sgp4(tsince float64) error {
 	}
 
 	return nil
+}
+
+// Update TODO comment me
+func (s *elsetrec) Update(time time.Time) error {
+	span := time.Sub(s.Timestamp).Minutes()
+	err := s.sgp4(span)
+	return err
 }
