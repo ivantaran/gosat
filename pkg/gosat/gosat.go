@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -28,6 +29,17 @@ type Gosat struct {
 
 type inputStruct struct {
 	IDList []int `json:"idList"`
+	Time   time.Time
+	Names  bool
+}
+
+//NewGosat TODO fill all fields here
+func NewGosat() *Gosat {
+	var gs Gosat
+	gs.tleMap = make(map[int]Tle)
+	gs.satMap = make(map[int]*elsetrec)
+	gs.conns = make(map[*conn]struct{})
+	return &gs
 }
 
 // loadIDList Load ID's List
@@ -46,7 +58,6 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 		tleMap[id] = t
 	}
 
-	gs.satMap = make(map[int]*elsetrec)
 	for _, id := range list.IDList {
 		if t, ok := tleMap[id]; ok {
 			var sat elsetrec
@@ -129,17 +140,24 @@ func (gs *Gosat) ListenAndServe() error {
 func (gs *Gosat) trackConn(c *conn) {
 	defer gs.mu.Unlock()
 	gs.mu.Lock()
-	if gs.conns == nil {
-		gs.conns = make(map[*conn]struct{})
-	}
 	gs.conns[c] = struct{}{}
 }
 
-func (gs *Gosat) parseInput(bytes []byte) (err error) {
-	var iStruct inputStruct
+func (gs *Gosat) parseInput(bytes []byte) (packet []byte, err error) {
+	iStruct := inputStruct{Names: false}
 	err = json.Unmarshal(bytes, &iStruct)
 	if len(iStruct.IDList) > 0 {
 		gs.updateIDList(iStruct.IDList)
+	}
+	if iStruct.Names {
+		names := make([]string, 0, len(gs.tleMap))
+		for _, tle := range gs.tleMap {
+			names = append(names, tle.Title)
+		}
+		packet, err = json.Marshal(struct{ Names []string }{names})
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -156,6 +174,7 @@ func (gs *Gosat) handle(c *conn) error {
 
 	sc := make(chan bool)
 	deadline := time.After(c.IdleTimeout)
+	buffer := make([]byte, 0, 4096)
 	for {
 		go func(s chan bool) {
 			s <- scanr.Scan()
@@ -170,14 +189,24 @@ func (gs *Gosat) handle(c *conn) error {
 				}
 				return nil
 			}
-
-			bytes, err := gs.update(time.Now())
-			if err != nil {
-				return err
+			buffer = append(buffer, scanr.Bytes()...)
+			if json.Valid(buffer) {
+				packet, err := gs.parseInput(buffer)
+				if err != nil {
+					log.Println(err)
+					return err
+				}
+				if packet != nil {
+					w.Write(packet)
+				}
+				buffer = buffer[:0]
+				bytes, err := gs.update(time.Now())
+				if err != nil {
+					return err
+				}
+				w.Write(bytes)
+				w.Flush()
 			}
-			gs.parseInput(scanr.Bytes())
-			w.Write(bytes)
-			w.Flush()
 			deadline = time.After(c.IdleTimeout)
 		}
 	}
@@ -215,8 +244,24 @@ func (gs *Gosat) LoadTle() (err error) {
 		return err
 	}
 	dir = filepath.Join(dir, "gosat")
-	file := filepath.Join(dir, "stations.txt")
-	gs.tleMap, err = LoadTleAsMap(file)
-	// gs.tleMap, err = LoadTleAsMap("/home/taran/work/gosat/pkg/gosat/testdata/SGP4-VER.TLE")
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		log.Printf("Loading TLE: %s\n", file.Name())
+		if file.IsDir() {
+			break
+		}
+		filePath := filepath.Join(dir, file.Name())
+		tleMap, err := LoadTleAsMap(filePath)
+		if err != nil {
+			return err
+		}
+		for id, tle := range tleMap {
+			gs.tleMap[id] = tle
+		}
+
+	}
 	return
 }

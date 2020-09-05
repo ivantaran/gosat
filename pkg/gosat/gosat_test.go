@@ -23,7 +23,7 @@ func TestLoadIDList(t *testing.T) {
 	defer file.Close()
 
 	bytes, _ := ioutil.ReadAll(file)
-	var gs Gosat
+	gs := NewGosat()
 	err = gs.loadIDList(bytes, tleList)
 	if err != nil {
 		t.Error(err)
@@ -37,11 +37,11 @@ func TestLoadIDList(t *testing.T) {
 }
 
 func TestServerProtectsAgaintSlowloris(t *testing.T) {
-	gs := Gosat{
-		Addr:         ":8080",
-		IdleTimeout:  5 * time.Second,
-		MaxReadBytes: 1000,
-	}
+	gs := NewGosat()
+	gs.Addr = ":8080"
+	gs.IdleTimeout = 5 * time.Second
+	gs.MaxReadBytes = 1000
+
 	go gs.ListenAndServe()
 
 	time.Sleep(1 * time.Second) // hack to wait for server to start
@@ -66,7 +66,7 @@ func TestServerProtectsAgaintSlowloris(t *testing.T) {
 			if err.Error() != "EOF" {
 				t.Error(err)
 			}
-		} else if string(line) == "null" {
+		} else if string(line) == "{}" {
 			t.Skip()
 		}
 	}
