@@ -23,12 +23,12 @@ type Gosat struct {
 	mu           sync.Mutex
 	MaxReadBytes int64
 
-	satMap map[int]*elsetrec
-	tleMap map[int]Tle
+	satMap map[string]*elsetrec
+	tleMap map[string]Tle
 }
 
 type inputStruct struct {
-	IDList []int `json:"idList"`
+	IDList []string `json:"idList"`
 	Time   time.Time
 	Names  bool
 }
@@ -36,8 +36,8 @@ type inputStruct struct {
 //NewGosat TODO fill all fields here
 func NewGosat() *Gosat {
 	var gs Gosat
-	gs.tleMap = make(map[int]Tle)
-	gs.satMap = make(map[int]*elsetrec)
+	gs.tleMap = make(map[string]Tle)
+	gs.satMap = make(map[string]*elsetrec)
 	gs.conns = make(map[*conn]struct{})
 	return &gs
 }
@@ -52,10 +52,9 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 		return err
 	}
 
-	tleMap := make(map[int]Tle)
+	tleMap := make(map[string]Tle)
 	for _, t := range tle {
-		id := t.Satnum
-		tleMap[id] = t
+		tleMap[t.Title] = t
 	}
 
 	for _, id := range list.IDList {
@@ -73,8 +72,8 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 	return nil
 }
 
-func (gs *Gosat) updateIDList(list []int) error {
-	gs.satMap = make(map[int]*elsetrec)
+func (gs *Gosat) updateSatMap(list []string) error {
+	// gs.satMap = make(map[string]*elsetrec)
 	for _, id := range list {
 		if t, ok := gs.tleMap[id]; ok {
 			var sat elsetrec
@@ -96,7 +95,7 @@ func (gs *Gosat) update(time time.Time) (bytes []byte, err error) {
 			fmt.Println(err)
 		}
 	}
-	bytes, err = json.Marshal(gs.satMap)
+	bytes, err = json.Marshal(struct{ SatMap map[string]*elsetrec }{gs.satMap})
 	return
 }
 
@@ -147,14 +146,15 @@ func (gs *Gosat) parseInput(bytes []byte) (packet []byte, err error) {
 	iStruct := inputStruct{Names: false}
 	err = json.Unmarshal(bytes, &iStruct)
 	if len(iStruct.IDList) > 0 {
-		gs.updateIDList(iStruct.IDList)
+		gs.updateSatMap(iStruct.IDList)
 	}
 	if iStruct.Names {
-		names := make([]string, 0, len(gs.tleMap))
-		for _, tle := range gs.tleMap {
-			names = append(names, tle.Title)
-		}
-		packet, err = json.Marshal(struct{ Names []string }{names})
+		// names := make([]string, 0, len(gs.tleMap))
+		// for _, tle := range gs.tleMap {
+		// 	names = append(names, tle.Title)
+		// }
+		// packet, err = json.Marshal(struct{ Names []string }{names})
+		packet, err = json.Marshal(struct{ TleMap map[string]Tle }{gs.tleMap})
 		if err != nil {
 			return
 		}
@@ -198,6 +198,7 @@ func (gs *Gosat) handle(c *conn) error {
 				}
 				if packet != nil {
 					w.Write(packet)
+					w.Write([]byte("\n"))
 				}
 				buffer = buffer[:0]
 				bytes, err := gs.update(time.Now())
@@ -205,6 +206,7 @@ func (gs *Gosat) handle(c *conn) error {
 					return err
 				}
 				w.Write(bytes)
+				w.Write([]byte("\n"))
 				w.Flush()
 			}
 			deadline = time.After(c.IdleTimeout)

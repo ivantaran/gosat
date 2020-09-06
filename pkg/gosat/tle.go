@@ -173,7 +173,7 @@ func LoadTle(fileName string) ([]Tle, error) {
 }
 
 // LoadTleAsMap load TLE data
-func LoadTleAsMap(fileName string) (map[int]Tle, error) {
+func LoadTleAsMap(fileName string) (map[string]Tle, error) {
 	const xpdotp = 1440.0 / twoPi
 
 	file, err := os.Open(fileName)
@@ -183,7 +183,7 @@ func LoadTleAsMap(fileName string) (map[int]Tle, error) {
 	}
 	defer file.Close()
 
-	tleMap := make(map[int]Tle)
+	tleMap := make(map[string]Tle)
 	scanner := bufio.NewScanner(file)
 
 	lineFirstOk := false
@@ -252,8 +252,11 @@ func LoadTleAsMap(fileName string) (map[int]Tle, error) {
 		if lineFirstOk && lineSecondOk {
 			lineFirstOk = false
 			lineSecondOk = false
-			tleMap[t.Satnum] = t
-			// t := Tle{}
+			if len(t.Title) > 0 {
+				tleMap[t.Title] = t
+			} else {
+				tleMap[strconv.Itoa(t.Satnum)] = t
+			}
 		}
 	}
 

@@ -66,7 +66,7 @@ func TestServerProtectsAgaintSlowloris(t *testing.T) {
 			if err.Error() != "EOF" {
 				t.Error(err)
 			}
-		} else if string(line) == "{}" {
+		} else if len(line) > 0 {
 			t.Skip()
 		}
 	}
