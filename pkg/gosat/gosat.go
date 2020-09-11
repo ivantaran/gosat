@@ -28,9 +28,11 @@ type Gosat struct {
 }
 
 type inputStruct struct {
-	IDList []string `json:"idList"`
-	Time   time.Time
-	Names  bool
+	IDList   []string
+	AppendID []string
+	RemoveID []string
+	Time     time.Time
+	Names    bool
 }
 
 //NewGosat TODO fill all fields here
@@ -72,8 +74,7 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 	return nil
 }
 
-func (gs *Gosat) updateSatMap(list []string) error {
-	// gs.satMap = make(map[string]*elsetrec)
+func (gs *Gosat) appendToSatMap(list []string) error {
 	for _, id := range list {
 		if t, ok := gs.tleMap[id]; ok {
 			var sat elsetrec
@@ -83,6 +84,15 @@ func (gs *Gosat) updateSatMap(list []string) error {
 				return err
 			}
 			gs.satMap[id] = &sat
+		}
+	}
+	return nil
+}
+
+func (gs *Gosat) removeFromSatMap(list []string) error {
+	for _, id := range list {
+		if _, ok := gs.tleMap[id]; ok {
+			delete(gs.satMap, id)
 		}
 	}
 	return nil
@@ -146,7 +156,10 @@ func (gs *Gosat) parseInput(bytes []byte) (packet []byte, err error) {
 	iStruct := inputStruct{Names: false}
 	err = json.Unmarshal(bytes, &iStruct)
 	if len(iStruct.IDList) > 0 {
-		gs.updateSatMap(iStruct.IDList)
+		gs.appendToSatMap(iStruct.IDList)
+	}
+	if len(iStruct.RemoveID) > 0 {
+		gs.removeFromSatMap(iStruct.RemoveID)
 	}
 	if iStruct.Names {
 		// names := make([]string, 0, len(gs.tleMap))
