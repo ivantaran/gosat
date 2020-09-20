@@ -23,7 +23,7 @@ type Gosat struct {
 	mu           sync.Mutex
 	MaxReadBytes int64
 
-	satMap map[string]*elsetrec
+	satMap map[string]*extendedSatellite
 	tleMap map[string]Tle
 }
 
@@ -39,7 +39,7 @@ type inputStruct struct {
 func NewGosat() *Gosat {
 	var gs Gosat
 	gs.tleMap = make(map[string]Tle)
-	gs.satMap = make(map[string]*elsetrec)
+	gs.satMap = make(map[string]*extendedSatellite)
 	gs.conns = make(map[*conn]struct{})
 	return &gs
 }
@@ -61,7 +61,7 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 
 	for _, id := range list.IDList {
 		if t, ok := tleMap[id]; ok {
-			var sat elsetrec
+			var sat extendedSatellite
 			err := sat.sgp4init("wgs84", &t, 'i')
 			if err != nil {
 				log.Fatal(err)
@@ -77,7 +77,7 @@ func (gs *Gosat) loadIDList(bytes []byte, tle []Tle) error {
 func (gs *Gosat) appendToSatMap(list []string) error {
 	for _, id := range list {
 		if t, ok := gs.tleMap[id]; ok {
-			var sat elsetrec
+			var sat extendedSatellite
 			err := sat.sgp4init("wgs84", &t, 'i')
 			if err != nil {
 				log.Fatal(err)
@@ -105,7 +105,7 @@ func (gs *Gosat) update(time time.Time) (bytes []byte, err error) {
 			fmt.Println(err)
 		}
 	}
-	bytes, err = json.Marshal(struct{ SatMap map[string]*elsetrec }{gs.satMap})
+	bytes, err = json.Marshal(struct{ SatMap map[string]*extendedSatellite }{gs.satMap})
 	return
 }
 
@@ -162,11 +162,6 @@ func (gs *Gosat) parseInput(bytes []byte) (packet []byte, err error) {
 		gs.removeFromSatMap(iStruct.RemoveID)
 	}
 	if iStruct.Names {
-		// names := make([]string, 0, len(gs.tleMap))
-		// for _, tle := range gs.tleMap {
-		// 	names = append(names, tle.Title)
-		// }
-		// packet, err = json.Marshal(struct{ Names []string }{names})
 		packet, err = json.Marshal(struct{ TleMap map[string]Tle }{gs.tleMap})
 		if err != nil {
 			return

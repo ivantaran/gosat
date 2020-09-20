@@ -12,7 +12,7 @@ const (
 	x2o3    = 2.0 / 3.0
 )
 
-type elsetrec struct {
+type satellite struct {
 	error         int
 	isInit        bool
 	method        rune
@@ -231,7 +231,7 @@ type dpperVars struct {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dpper(vars *dpperVars) {
+func (s *satellite) dpper(vars *dpperVars) {
 	const (
 		zns = 1.19459e-5
 		zes = 0.01675
@@ -354,7 +354,7 @@ func (s *elsetrec) dpper(vars *dpperVars) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) initl(vars *initlVars) {
+func (s *satellite) initl(vars *initlVars) {
 	/* ------------- calculate auxillary epoch quantities ---------- */
 	vars.eccsq = s.ecco * s.ecco
 	vars.omeosq = 1.0 - vars.eccsq
@@ -484,7 +484,7 @@ func (s *gravityVars) setGravityVars(whichconst string) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dspace() {
+func (s *satellite) dspace() {
 	const (
 		fasx2 = 0.13130908
 		fasx4 = 2.8843198
@@ -621,7 +621,7 @@ func (s *elsetrec) dspace() {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dscom(mv *meanVars, ds *commonVars) {
+func (s *satellite) dscom(mv *meanVars, ds *commonVars) {
 	const (
 		zes    = 0.01675
 		zel    = 0.05490
@@ -800,7 +800,7 @@ func (s *elsetrec) dscom(mv *meanVars, ds *commonVars) {
 *    hoots, schumacher and glover 2004
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
-func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, xpidot float64) {
+func (s *satellite) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, xpidot float64) {
 	const (
 		q22    = 1.7891679e-6
 		q31    = 2.1460748e-6
@@ -986,7 +986,7 @@ func (s *elsetrec) dsinit(mv *meanVars, ds *commonVars, iv *initlVars, xpidot fl
 	}
 }
 
-func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
+func (s *satellite) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 	const temp4 = 1.5e-12
 
 	/* ----------- set all near earth variables to zero ------------ */
@@ -1267,7 +1267,7 @@ func (s *elsetrec) sgp4init(whichconst string, t *Tle, opsmode rune) error {
 *    vallado, crawford, hujsak, kelso  2006
 ----------------------------------------------------------------------------*/
 
-func (s *elsetrec) sgp4(tsince float64) error {
+func (s *satellite) sgp4(tsince float64) error {
 	/* ------------------ set mathematical constants --------------- */
 	// sgp4fix divisor for divide by zero check on inclination
 	// the old check used 1.0 + cos(pi-1.0e-9), but then compared it to
@@ -1493,7 +1493,7 @@ func (s *elsetrec) sgp4(tsince float64) error {
 }
 
 // Update TODO comment me
-func (s *elsetrec) Update(time time.Time) error {
+func (s *satellite) Update(time time.Time) error {
 	span := time.Sub(s.Timestamp).Minutes()
 	err := s.sgp4(span)
 	return err

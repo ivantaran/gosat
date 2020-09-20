@@ -62,14 +62,14 @@ func loadRefTest(fileName string) (testMap, error) {
 
 func TestInit(t *testing.T) {
 	t.Run("init test", func(t *testing.T) {
-		var sat elsetrec
+		var sat satellite
 		var tle1 Tle
 		sat.sgp4init("wgs84", &tle1, 'i')
 	})
 }
 
 func TestTleLoad(t *testing.T) {
-	var sat elsetrec
+	var sat satellite
 	tleList, err := LoadTle("./testdata/SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)
@@ -123,7 +123,7 @@ func TestReference(t *testing.T) {
 			t.Errorf("len(testMap): %d != 32\n", len(testMap))
 		}
 	}
-	var sat elsetrec
+	var sat satellite
 	tleList, err := LoadTle("./testdata/SGP4-VER.TLE")
 	if err != nil {
 		t.Error(err)

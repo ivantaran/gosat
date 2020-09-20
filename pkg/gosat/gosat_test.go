@@ -77,7 +77,7 @@ func TestMarshalSatellite(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	var sat elsetrec
+	var sat satellite
 	err = sat.sgp4init("wgs84", &tleList[0], 'i')
 	bytes, err := json.Marshal(tleList)
 	if err != nil {
