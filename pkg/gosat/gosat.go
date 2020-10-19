@@ -209,7 +209,7 @@ func (gs *Gosat) handle(c *conn) error {
 					w.Write([]byte("\n"))
 				}
 				buffer = buffer[:0]
-				bytes, err := gs.update(time.Now())
+				bytes, err := gs.update(time.Now().UTC())
 				if err != nil {
 					return err
 				}

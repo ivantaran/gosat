@@ -86,6 +86,7 @@ func jday(year int, days float64) (jd float64, jdFrac float64, timestamp time.Ti
 }
 
 // LoadTle load TLE data
+// TODO remove LoadTle or LoadTleAsMap
 func LoadTle(fileName string) ([]Tle, error) {
 	const xpdotp = 1440.0 / twoPi
 
