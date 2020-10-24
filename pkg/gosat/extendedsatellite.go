@@ -8,6 +8,16 @@ import (
 const (
 	// angular speed of Earth's rotation rad/s
 	angularSpeed = 7.2921151467e-5
+
+	// reference time for Julian Date 01.01.2020 12:00:00 UTC
+	// http://www.onlineconversion.com/julian_date.htm
+	julianDate2020 = 2458850.0
+)
+
+var (
+	// reference time for Julian Date 01.01.2020 12:00:00 UTC
+	unixJulianDate2020 = time.Unix(1577880000, 0)
+	oneDay             = float64(86400.0 * time.Second)
 )
 
 type extendedSatellite struct {
@@ -29,10 +39,7 @@ func eci2ecef(eci [6]float64, angle float64) (ecef [6]float64) {
 }
 
 func julian(t time.Time) float64 {
-	// http://www.onlineconversion.com/julian_date.htm
-	unix := time.Unix(1136239445, 0)
-	const oneDay = float64(86400. * time.Second)
-	return 2453738.4195 + float64(t.Sub(unix))/oneDay
+	return julianDate2020 + float64(t.Sub(unixJulianDate2020))/oneDay
 }
 
 func secondsOfTheDay(t time.Time) float64 {
@@ -42,21 +49,24 @@ func secondsOfTheDay(t time.Time) float64 {
 }
 
 func (es *extendedSatellite) Update(t time.Time) error {
-	jd := julian(t)
-	jd += 0
 	timeStartSeconds := -60.0 * math.Pi / es.no
 	timeStepSeconds := 120.0 * math.Pi / es.no / float64(len(es.Track))
 	timeStart := time.Duration(float64(time.Second) * timeStartSeconds)
 	timeStep := time.Duration(float64(time.Second) * timeStepSeconds)
 	trackTime := t.Add(timeStart)
 	for i := range es.Track {
-		angle := secondsOfTheDay(trackTime)*angularSpeed + es.gsto
+		jd := julian(trackTime)
+		gst := gstime(jd)
 		es.satellite.Update(trackTime)
-		es.Track[i] = eci2ecef(es.Coords, angle)
+		es.Track[i] = eci2ecef(es.Coords, gst)
 		trackTime = trackTime.Add(timeStep)
 	}
+	// if 'julian' returned julian date without fractional part of the day
+	// then rotation angle would be:
+	// angle := secondsOfTheDay(trackTime)*angularSpeed + gst
+	jd := julian(t)
+	gst := gstime(jd)
 	err := es.satellite.Update(t)
-	angle := secondsOfTheDay(t)*angularSpeed + es.gsto
-	es.Coords = eci2ecef(es.Coords, angle)
+	es.Coords = eci2ecef(es.Coords, gst)
 	return err
 }
