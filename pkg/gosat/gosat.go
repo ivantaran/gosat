@@ -22,6 +22,7 @@ type Gosat struct {
 	listener     net.Listener
 	mu           sync.Mutex
 	MaxReadBytes int64
+	time         time.Time
 
 	satMap map[string]*extendedSatellite
 	tleMap map[string]Tle
@@ -161,6 +162,11 @@ func (gs *Gosat) parseInput(bytes []byte) (packet []byte, err error) {
 	if len(iStruct.RemoveID) > 0 {
 		gs.removeFromSatMap(iStruct.RemoveID)
 	}
+	if iStruct.Time.IsZero() {
+		gs.time = time.Now().UTC()
+	} else {
+		gs.time = iStruct.Time
+	}
 	if iStruct.Names {
 		packet, err = json.Marshal(struct{ TleMap map[string]Tle }{gs.tleMap})
 		if err != nil {
@@ -209,7 +215,7 @@ func (gs *Gosat) handle(c *conn) error {
 					w.Write([]byte("\n"))
 				}
 				buffer = buffer[:0]
-				bytes, err := gs.update(time.Now().UTC())
+				bytes, err := gs.update(gs.time)
 				if err != nil {
 					return err
 				}
