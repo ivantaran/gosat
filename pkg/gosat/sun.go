@@ -261,22 +261,16 @@ func ll0(t, localtime float64) (latitude, longitude float64) {
 }
 
 func ll(t time.Time) (latitude, longitude float64) {
-
 	jday := julian(t)
 	julianCenturies := timeJulianCent(jday)
-	minutesOfTheDay := secondsOfTheDay(t) * 1440.0
+	minutesOfTheDay := secondsOfTheDay(t) / 60.0
 	// TODO julianCenturies must be at 12:00
 	latitude, longitude = ll0(julianCenturies, minutesOfTheDay)
 	return
 }
 
-/*
-
-func ae(time_t t, float64 lat, float64 lon, float64 *azm, float64 *elv,
-        char use_arc) {
-    float64 slon, slat;
-
-    ll(t, &slat, &slon);
-    ae_0(slat, slon, lat, lon, azm, elv, use_arc);
+func ae(t time.Time, latitude, longitude float64, useArc rune) (azimuth, elevation float64) {
+	sunLatitude, sunLongitude := ll(t)
+	azimuth, elevation = ae0(sunLatitude, sunLongitude, latitude, longitude, useArc)
+	return
 }
-*/
