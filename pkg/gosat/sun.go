@@ -261,25 +261,15 @@ func ll0(t, localtime float64) (latitude, longitude float64) {
 }
 
 func ll(t time.Time) (latitude, longitude float64) {
-    // struct tm *gmt;
-    // float64 jday, tl, tt;
-    // float64 slon, slat;
 
-    // gmt = gmtime(&t);
 	jday := julian(t)
-    tl = gmt->tm_hour / 24.0 + gmt->tm_min / 1440.0 + gmt->tm_sec / 86400.0;
-    tt = time_julian_cent(jday + tl);
-
-    ll_0(tt, tl * 1440.0, &slat, &slon);
-
-    if (lat != NULL) {
-        (*lat) = slat;
-    }
-
-    if (lon != NULL) {
-        (*lon) = slon;
-    }
+	julianCenturies := timeJulianCent(jday)
+	minutesOfTheDay := secondsOfTheDay(t) * 1440.0
+	// TODO julianCenturies must be at 12:00
+	latitude, longitude = ll0(julianCenturies, minutesOfTheDay)
+	return
 }
+
 /*
 
 func ae(time_t t, float64 lat, float64 lon, float64 *azm, float64 *elv,
