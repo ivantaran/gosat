@@ -12,6 +12,7 @@ const (
 	tolerance = 20.0
 )
 
+// Also used this link https://www.oc.nps.edu/oc2902w/coord/geodesy.js
 func TestSunAe(t *testing.T) {
 	// 01.01.2018 06:00:00 UTC
 	time := time.Unix(1514786400, 0).UTC()
