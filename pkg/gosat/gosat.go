@@ -26,6 +26,7 @@ type Gosat struct {
 
 	satMap map[string]*extendedSatellite
 	tleMap map[string]Tle
+	sun    sunObject
 }
 
 type inputStruct struct {
@@ -106,7 +107,11 @@ func (gs *Gosat) update(time time.Time) (bytes []byte, err error) {
 			fmt.Println(err)
 		}
 	}
-	bytes, err = json.Marshal(struct{ SatMap map[string]*extendedSatellite }{gs.satMap})
+	gs.sun.update(time)
+	bytes, err = json.Marshal(struct {
+		SatMap map[string]*extendedSatellite
+		Sun    sunObject
+	}{gs.satMap, gs.sun})
 	return
 }
 
@@ -215,6 +220,7 @@ func (gs *Gosat) handle(c *conn) error {
 					w.Write([]byte("\n"))
 				}
 				buffer = buffer[:0]
+
 				bytes, err := gs.update(gs.time)
 				if err != nil {
 					return err
