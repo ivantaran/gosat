@@ -8,7 +8,17 @@ import (
 const (
 	degToRad = math.Pi / 180.0
 	radToDeg = 180.0 / math.Pi
+
+	// WGS84 constants
+	earthAxisA      = 6378137.0
+	earthFlattening = 1.0 / 298.257223563
+	earthAxisB      = earthAxisA * (1.0 - earthFlattening)
+	earthEcc1Sqr    = 1.0 - (earthAxisB*earthAxisB)/(earthAxisA*earthAxisA)
 )
+
+// var (
+// 	earthEcc1 = math.Sqrt(earthEcc1Sqr)
+// )
 
 func timeJulianCent(jd float64) float64 {
 	return (jd - 2451545.0) / 36525.0
@@ -114,26 +124,6 @@ func sun_declination(t, true_long float64) float64 {
 	sint := math.Sin(e) * math.Sin(lambda)
 	theta := math.Asin(sint)
 	return theta // in radians
-}
-
-func get_jd( /*struct tm *gmt*/ ) float64 {
-	// int month, year;
-	// float64 a, b, jd;
-
-	// month = gmt->tm_mon + 1;
-	// year = gmt->tm_year + 1900;
-
-	// if (month <= 2) {
-	//     year -= 1;
-	//     month += 12;
-	// }
-
-	// a = floor(year * 0.01);
-	// b = 2.0 - a + floor(a * 0.25);
-	// jd = floor(365.25 * (year + 4716.0)) + floor(30.6001 * (month + 1.0))
-	//         + gmt->tm_mday + b - 1524.5;
-	// return jd;
-	return 0.0
 }
 
 func atmo_refraction_correction(elevation float64) float64 {
@@ -260,11 +250,40 @@ func ll0(t, localtime float64) (latitude, longitude float64) {
 	return
 }
 
+// func radcur(slat, clat float64) (re, rn, rm float64) {
+// 	dsq := 1.0 - earthEcc1Sqr*slat*slat
+// 	d := math.Sqrt(dsq)
+
+// 	rn = earthAxisA / d
+// 	rm = rn * (1.0 - earthEcc1Sqr) / dsq
+
+// 	rho := rn * clat
+// 	z := (1.0 - earthEcc1Sqr) * rn * slat
+// 	rsq := rho*rho + z*z
+// 	re = math.Sqrt(rsq)
+
+// 	return
+// }
+
+func sunLlToEcef(latitude, longitude, rRange float64) (ecef [6]float64) {
+	clat := math.Cos(latitude)
+	slat := math.Sin(latitude)
+	clon := math.Cos(longitude)
+	slon := math.Sin(longitude)
+
+	// re, rn, rm := radcur(slat, clat)
+
+	ecef[0] = (rRange) * clat * clon
+	ecef[1] = (rRange) * clat * slon
+	ecef[2] = (rRange) * slat
+
+	return ecef
+}
+
 func ll(t time.Time) (latitude, longitude float64) {
 	jday := julian(t)
 	julianCenturies := timeJulianCent(jday)
 	minutesOfTheDay := secondsOfTheDay(t) / 60.0
-	// TODO julianCenturies must be at 12:00
 	latitude, longitude = ll0(julianCenturies, minutesOfTheDay)
 	return
 }
