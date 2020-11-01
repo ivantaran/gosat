@@ -17,13 +17,13 @@ func TestSunAe(t *testing.T) {
 	time := time.Unix(1514786400, 0).UTC()
 	latitude := 58.0 * degToRad
 	longitude := 63.0 * degToRad
-	sunLatitude, sunLongitude := ll(time)
+	sunLatitude, sunLongitude, _ := SunLlr(time)
 
 	t.Log(time)
 	t.Log("Sun location")
 	t.Logf("\tLat: %+6.2f\n", sunLatitude*radToDeg)
 	t.Logf("\tLon: %+6.2f\n\n", sunLongitude*radToDeg)
-	azimuth, elevation := ae(time, latitude, longitude, 'y')
+	azimuth, elevation := sunAe(time, latitude, longitude, true)
 
 	dazm := math.Abs(azimuth - azmTest)
 	delv := math.Abs(elevation - elvTest)

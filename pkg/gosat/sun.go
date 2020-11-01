@@ -9,16 +9,14 @@ const (
 	degToRad = math.Pi / 180.0
 	radToDeg = 180.0 / math.Pi
 
+	astronomicalUnit = 149597870700.0
+
 	// WGS84 constants
 	earthAxisA      = 6378137.0
 	earthFlattening = 1.0 / 298.257223563
 	earthAxisB      = earthAxisA * (1.0 - earthFlattening)
 	earthEcc1Sqr    = 1.0 - (earthAxisB*earthAxisB)/(earthAxisA*earthAxisA)
 )
-
-// var (
-// 	earthEcc1 = math.Sqrt(earthEcc1Sqr)
-// )
 
 func timeJulianCent(jd float64) float64 {
 	return (jd - 2451545.0) / 36525.0
@@ -82,64 +80,62 @@ func geomMeanLongSun(t float64) float64 {
 	return lon // in radians
 }
 
-func geom_mean_anomaly_sun(t float64) float64 {
+func sunGeomMeanAnomaly(t float64) float64 {
 	m := degToRad * (357.52911 + t*(35999.05029-0.0001537*t))
 	return m // in radians
 }
 
-func eccentricity_earth_orbit(t float64) float64 {
+func earthEccentricityOrbit(t float64) float64 {
 	e := 0.016708634 - t*(0.000042037+0.0000001267*t)
 	return e // unitless
 }
 
-func sun_rad_vector(t, m, seoc, e float64) float64 {
+func sunRadVector(m, seoc, e float64) float64 {
 	v := m + seoc
 	r := (1.000001018 * (1.0 - e*e)) / (1.0 + e*math.Cos(v))
 	return r // in AUs
 }
 
-func sun_apparent_long(t, true_long float64) float64 {
+func sunApparentLong(t, trueLong float64) float64 {
 	omega := degToRad * (125.04 - 1934.136*t)
-	lambda := true_long - degToRad*(0.00569+0.00478*math.Sin(omega))
+	lambda := trueLong - degToRad*(0.00569+0.00478*math.Sin(omega))
 	return lambda // in radians
 }
 
-func mean_obliquity_of_ecliptic(t float64) float64 {
+func meanObliquityOfEcliptic(t float64) float64 {
 	seconds := 21.448 - t*(46.8150+t*(0.00059-t*0.001813))
 	e0 := degToRad * (23.0 + (26.0+seconds/60.0)/60.0)
 	return e0 // in radians
 }
 
-func obliquity_correction(t float64) float64 {
-	e0 := mean_obliquity_of_ecliptic(t)
+func obliquityCorrection(t float64) float64 {
+	e0 := meanObliquityOfEcliptic(t)
 	omega := degToRad * (125.04 - 1934.136*t)
 	e := e0 + degToRad*(0.00256*math.Cos(omega))
 	return e // in radians
 }
 
-func sun_declination(t, true_long float64) float64 {
-	e := obliquity_correction(t)
-	lambda := sun_apparent_long(t, true_long)
+func sunDeclination(t, trueLong float64) float64 {
+	e := obliquityCorrection(t)
+	lambda := sunApparentLong(t, trueLong)
 
 	sint := math.Sin(e) * math.Sin(lambda)
 	theta := math.Asin(sint)
 	return theta // in radians
 }
 
-func atmo_refraction_correction(elevation float64) float64 {
+// atmoRefractionCorrection Atmospheric refraction correction
+func atmoRefractionCorrection(elevation float64) float64 {
 	var value, te float64
-	/* Atmospheric refraction correction */
 	if elevation > degToRad*(85.0) {
 		value = 0.0
 	} else {
 		te = math.Tan(elevation)
 		if elevation > degToRad*(5.0) {
-			value = 58.1/te - 0.07/(te*te*te) +
-				0.000086/(te*te*te*te*te)
+			value = 58.1/te - 0.07/(te*te*te) + 0.000086/(te*te*te*te*te)
 		} else {
 			if elevation > degToRad*(-0.575) {
-				value = 1735.0 + elevation*(-518.2+elevation*
-					(103.4+elevation*(-12.79+elevation*0.711)))
+				value = 1735.0 + elevation*(-518.2+elevation*(103.4+elevation*(-12.79+elevation*0.711)))
 			} else {
 				value = -20.774 / te
 			}
@@ -150,7 +146,7 @@ func atmo_refraction_correction(elevation float64) float64 {
 }
 
 // ae0 useArc - atmospheric refraction correction flag
-func ae0(slat, slon, lat, lon float64, useArc rune) (azimuth, elevation float64) {
+func ae0(slat, slon, lat, lon float64, useArc bool) (azimuth, elevation float64) {
 
 	omega := lon - slon
 	sinlat := math.Sin(lat)
@@ -197,24 +193,24 @@ func ae0(slat, slon, lat, lon float64, useArc rune) (azimuth, elevation float64)
 		azimuth += 2.0 * math.Pi
 	}
 
-	if useArc == 1 || useArc == 'y' {
-		elevation += atmo_refraction_correction(elevation)
+	if useArc {
+		elevation += atmoRefractionCorrection(elevation)
 	}
 
-	//    if (elevation < degToRad * (-18.0)) {
-	//        puts("A Night at the Roxbury");
-	//    }
+	// if elevation < degToRad*(-18.0) {
+	// 	puts("A Night at the Roxbury")
+	// }
 
 	return
 }
 
-func ll0(t, localtime float64) (latitude, longitude float64) {
+func sunLlr0(t, localtime float64) (latitude, longitude, radiusVector float64) {
 
-	m := geom_mean_anomaly_sun(t)
-	e := eccentricity_earth_orbit(t)
+	m := sunGeomMeanAnomaly(t)
+	e := earthEccentricityOrbit(t)
 
 	// equation_of_time
-	epsilon := obliquity_correction(t)
+	epsilon := obliquityCorrection(t)
 	l0 := geomMeanLongSun(t)
 
 	y := math.Tan(epsilon * 0.5)
@@ -238,7 +234,7 @@ func ll0(t, localtime float64) (latitude, longitude float64) {
 
 	trueLong := seoc + l0
 
-	latitude = sun_declination(t, trueLong)
+	latitude = sunDeclination(t, trueLong)
 	longitude = 180.0 - (eqTime+localtime)*0.25
 	longitude = math.Mod(longitude+180.0, 360.0)
 	if longitude < 0.0 {
@@ -246,50 +242,46 @@ func ll0(t, localtime float64) (latitude, longitude float64) {
 	}
 	longitude -= 180.0
 	longitude = degToRad * (longitude)
+	radiusVector = sunRadVector(m, seoc, e) // TODO need to check
+	radiusVector *= astronomicalUnit
 
 	return
 }
 
-// func radcur(slat, clat float64) (re, rn, rm float64) {
-// 	dsq := 1.0 - earthEcc1Sqr*slat*slat
-// 	d := math.Sqrt(dsq)
-
-// 	rn = earthAxisA / d
-// 	rm = rn * (1.0 - earthEcc1Sqr) / dsq
-
-// 	rho := rn * clat
-// 	z := (1.0 - earthEcc1Sqr) * rn * slat
-// 	rsq := rho*rho + z*z
-// 	re = math.Sqrt(rsq)
-
-// 	return
-// }
-
-func sunLlToEcef(latitude, longitude, rRange float64) (ecef [6]float64) {
+func sunLlrToEcef(latitude, longitude, radiusVector float64) (ecef [6]float64) {
 	clat := math.Cos(latitude)
 	slat := math.Sin(latitude)
 	clon := math.Cos(longitude)
 	slon := math.Sin(longitude)
 
-	// re, rn, rm := radcur(slat, clat)
-
-	ecef[0] = (rRange) * clat * clon
-	ecef[1] = (rRange) * clat * slon
-	ecef[2] = (rRange) * slat
+	ecef[0] = radiusVector * clat * clon
+	ecef[1] = radiusVector * clat * slon
+	ecef[2] = radiusVector * slat
+	ecef[3] = 0.0 // TODO
+	ecef[4] = 0.0
+	ecef[5] = 0.0
 
 	return ecef
 }
 
-func ll(t time.Time) (latitude, longitude float64) {
-	jday := julian(t)
-	julianCenturies := timeJulianCent(jday)
-	minutesOfTheDay := secondsOfTheDay(t) / 60.0
-	latitude, longitude = ll0(julianCenturies, minutesOfTheDay)
+func sunAe(t time.Time, latitude, longitude float64, useArc bool) (azimuth, elevation float64) {
+	sunLatitude, sunLongitude, _ := SunLlr(t)
+	azimuth, elevation = ae0(sunLatitude, sunLongitude, latitude, longitude, useArc)
 	return
 }
 
-func ae(t time.Time, latitude, longitude float64, useArc rune) (azimuth, elevation float64) {
-	sunLatitude, sunLongitude := ll(t)
-	azimuth, elevation = ae0(sunLatitude, sunLongitude, latitude, longitude, useArc)
+// SunLlr return latitude, longitude, radiusVector of the Sun at the specified UTC time
+func SunLlr(t time.Time) (latitude, longitude, radiusVector float64) {
+	jday := julian(t)
+	julianCenturies := timeJulianCent(jday)
+	minutesOfTheDay := secondsOfTheDay(t) / 60.0
+	latitude, longitude, radiusVector = sunLlr0(julianCenturies, minutesOfTheDay)
+	return
+}
+
+// SunEcef return ECEF of the Sun at the specified UTC time
+func SunEcef(t time.Time) (ecef [6]float64) {
+	latitude, longitude, radiusVector := SunLlr(t)
+	ecef = sunLlrToEcef(latitude, longitude, radiusVector)
 	return
 }
