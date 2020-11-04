@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	// DefaultPort default server port
+	DefaultPort = 4672
+)
+
 // Gosat TODO comment me
 type Gosat struct {
 	Addr         string
@@ -40,9 +45,14 @@ type inputStruct struct {
 //NewGosat TODO fill all fields here
 func NewGosat() *Gosat {
 	var gs Gosat
+
 	gs.tleMap = make(map[string]Tle)
 	gs.satMap = make(map[string]*extendedSatellite)
 	gs.conns = make(map[*conn]struct{})
+	gs.Addr = ":" + fmt.Sprint(DefaultPort)
+	gs.IdleTimeout = 30 * time.Second
+	gs.MaxReadBytes = 1000
+
 	return &gs
 }
 
@@ -120,7 +130,7 @@ func (gs *Gosat) update(time time.Time) (bytes []byte, err error) {
 func (gs *Gosat) ListenAndServe() error {
 	addr := gs.Addr
 	if addr == "" {
-		addr = ":8080"
+		addr = ":" + fmt.Sprint(DefaultPort)
 	}
 	log.Printf("starting server on %v\n", addr)
 	listener, err := net.Listen("tcp", addr)
@@ -271,10 +281,10 @@ func (gs *Gosat) LoadTle() (err error) {
 		return err
 	}
 	for _, file := range files {
-		log.Printf("Loading TLE: %s\n", file.Name())
 		if file.IsDir() {
 			break
 		}
+		log.Printf("Loading TLE: %s\n", file.Name())
 		filePath := filepath.Join(dir, file.Name())
 		tleMap, err := LoadTleAsMap(filePath)
 		if err != nil {

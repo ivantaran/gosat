@@ -4,3 +4,5 @@
 #!*.out
 #!*.TLE
 .vscode
+cmd/gosat/*
+!cmd/gosat/*.go

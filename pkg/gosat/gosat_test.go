@@ -38,14 +38,13 @@ func TestLoadIDList(t *testing.T) {
 
 func TestServerProtectsAgaintSlowloris(t *testing.T) {
 	gs := NewGosat()
-	gs.Addr = ":8080"
 	gs.IdleTimeout = 5 * time.Second
 	gs.MaxReadBytes = 1000
 
 	go gs.ListenAndServe()
 
 	time.Sleep(1 * time.Second) // hack to wait for server to start
-	conn, err := net.Dial("tcp", "0.0.0.0:8080")
+	conn, err := net.Dial("tcp", gs.Addr)
 	if err != nil {
 		t.Fatal(err)
 	}
